@@ -1,5 +1,6 @@
 package sample.project.Service;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -15,6 +16,8 @@ import sample.project.DTO.request.LoginRequest;
 import sample.project.DTO.request.RegisterRequest;
 import sample.project.DTO.response.LoginResponse;
 import sample.project.DTO.response.RegisterResponse;
+import sample.project.DTO.response.UserResponse;
+import sample.project.DTO.response.UserResponseList;
 import sample.project.Model.Role;
 import sample.project.Model.User;
 import sample.project.exception.UserNotFound;
@@ -66,10 +69,12 @@ public class UserService {
         return new RegisterResponse(savedUser.getId(), savedUser.getUsername(), token);
     }
 
-    public User getUser(Long id) {
+    public UserResponse getUser(Long id) {
         User user = userRepo.findById(id)
                 .orElseThrow(() -> new UserNotFound("id"));
-        return user;
+        UserResponse response = new UserResponse(user.getId(), user.getName(), user.getUsername(), user.getEmail(),
+                user.getPhonenumber(), user.getBirthdate(), user.getRole());
+        return response;
     }
 
     public LoginResponse login(LoginRequest req) {
@@ -77,15 +82,31 @@ public class UserService {
                 .authenticate(new UsernamePasswordAuthenticationToken(req.username(), req.password()));
 
         if (authentication.isAuthenticated()) {
-            return new LoginResponse("Login Successful.");
+            Optional<User> user = getUserByUsername(req.username());
+            if (!user.isPresent()) {
+                return new LoginResponse("Login Failed.", null);
+            }
+            String token = jwtService.generateToken(user.get());
+            return new LoginResponse("Login Successful.", token);
 
         } else {
-            return new LoginResponse("Login failed.");
+            return new LoginResponse("Login Failed.", null);
         }
     }
 
-    public List<User> getAllUser() {
-        return userRepo.findAll();
+    public UserResponseList getAllUser() {
+        List<User> users = userRepo.findAll();
+
+        List<UserResponse> responseList = new ArrayList<>();
+
+        for (int i = 0; i < users.size(); i++) {
+            User user = users.get(i);
+            responseList.add(new UserResponse(user.getId(), user.getName(), user.getUsername(),
+                    user.getEmail(), user.getPhonenumber(), user.getBirthdate(), user.getRole()));
+        }
+
+        return new UserResponseList(responseList);
+
     }
 
     public Optional<User> getUserByEmail(String email) {
@@ -102,31 +123,49 @@ public class UserService {
     }
 
     @Transactional
-    public User updateUser(User userUpdates, Long id) {
+    public UserResponse updateUser(RegisterRequest req, Long id) {
 
-        User exsistingUser = userRepo.findById(id)
+        User user = userRepo.findById(id)
                 .orElseThrow(() -> new UserNotFound("id"));
 
-        if (userUpdates.getName() != null) {
-            exsistingUser.setName(userUpdates.getName());
+        // check if another user with the same credentials as the update already exsists
+        // in the database.
+        Optional<User> exsistingUserEmail = getUserByEmail(req.email());
+        if (exsistingUserEmail.isPresent() && !exsistingUserEmail.get().getEmail().equals(user.getEmail())) {
+            throw new UserWithThisIdentifierExists("email");
         }
-        if (userUpdates.getEmail() != null) {
-            exsistingUser.setEmail(userUpdates.getEmail());
+        Optional<User> exsistingUserPhonenumber = getUserByPhonenumber(req.phonenumber());
+        if (exsistingUserPhonenumber.isPresent()
+                && !exsistingUserEmail.get().getPhonenumber().equals(user.getPhonenumber())) {
+            throw new UserWithThisIdentifierExists("phonenumber");
         }
-        if (userUpdates.getPassword() != null) {
-            exsistingUser.setPassword(userUpdates.getPassword());
-        }
-        if (userUpdates.getBirthdate() != null) {
-            exsistingUser.setBirthdate(userUpdates.getBirthdate());
-        }
-        if (userUpdates.getPhonenumber() != null) {
-            exsistingUser.setPhonenumber(userUpdates.getPhonenumber());
-        }
-        if (userUpdates.getUsername() != null) {
-            exsistingUser.setUsername(userUpdates.getUsername());
+        Optional<User> exsistingUserUsername = getUserByUsername(req.username());
+        if (exsistingUserUsername.isPresent() && !exsistingUserEmail.get().getUsername().equals(user.getUsername())) {
+            throw new UserWithThisIdentifierExists("username");
         }
 
-        return exsistingUser;
+        if (req.name() != null) {
+            user.setName(req.name());
+        }
+        if (req.email() != null) {
+            user.setEmail(req.email());
+        }
+        if (req.password() != null) {
+            user.setPassword(passwordEncoder.encode(req.password()));
+        }
+        if (req.birthdate() != null) {
+            user.setBirthdate(req.birthdate());
+        }
+        if (req.phonenumber() != null) {
+            user.setPhonenumber(req.phonenumber());
+        }
+        if (req.username() != null) {
+            user.setUsername(req.username());
+        }
+
+        return new UserResponse(user.getId(), user.getName(), user.getUsername(),
+                user.getEmail(), user.getPhonenumber(), user.getBirthdate(),
+                user.getRole());
     }
 
     public void deleteUser(Long id) {

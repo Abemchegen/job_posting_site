@@ -22,7 +22,13 @@ import sample.project.Service.UserDetailService;
 public class JwtAuthFilter extends OncePerRequestFilter {
 
     private final JwtService jwtService;
-    private UserDetailService userDetailsService;
+    private final UserDetailService userDetailsService;
+
+    @Override
+    protected boolean shouldNotFilter(@NonNull HttpServletRequest request) {
+        String path = request.getRequestURI();
+        return path.startsWith("users/public");
+    }
 
     @Override
     protected void doFilterInternal(@NonNull HttpServletRequest request,
@@ -38,10 +44,10 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             return;
         }
         jwt = authHeader.substring(7);
-        String username = jwtService.extractUsername(jwt);
+        Long id = Long.valueOf(jwtService.extractId(jwt));
 
-        if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-            User user = (User) userDetailsService.loadUserByUsername(username);
+        if (id != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+            User user = (User) userDetailsService.loadUserById(id);
 
             if (jwtService.isTokenValid(jwt, user)) {
                 UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(

@@ -3,7 +3,7 @@ spring.application.name=project
 # Database connection settings
 spring.datasource.url=jdbc:postgresql://localhost:5432/databasename
 spring.datasource.username=postgres_username
-spring.datasource.password=user_password
+spring.datasource.password=new_password
 spring.datasource.driver-class-name=org.postgresql.Driver
 
 # Hibernate settings

@@ -21,7 +21,8 @@ import sample.project.DTO.request.LoginRequest;
 import sample.project.DTO.request.RegisterRequest;
 import sample.project.DTO.response.LoginResponse;
 import sample.project.DTO.response.RegisterResponse;
-import sample.project.Model.User;
+import sample.project.DTO.response.UserResponse;
+import sample.project.DTO.response.UserResponseList;
 import sample.project.Service.UserService;
 
 @RestController
@@ -54,25 +55,25 @@ public class UserController {
 
     @GetMapping("/{id}")
     @ResponseStatus(HttpStatus.OK)
-    public ResponseEntity<User> getUser(@PathVariable Long id) {
-        User user = userService.getUser(id);
-        return ResponseEntity.ok().body(user);
+    public ResponseEntity<UserResponse> getUser(@PathVariable Long id) {
+        UserResponse responseList = userService.getUser(id);
+        return ResponseEntity.ok().body(responseList);
     }
 
     @GetMapping
     @ResponseStatus(HttpStatus.OK)
-    public ResponseEntity<List<User>> getUsers() {
+    public ResponseEntity<UserResponseList> getUsers() {
 
-        List<User> users = userService.getAllUser();
-        return ResponseEntity.ok().body(users);
+        UserResponseList response = userService.getAllUser();
+        return ResponseEntity.ok().body(response);
 
     }
 
     @PutMapping("/{id}")
     @ResponseStatus(HttpStatus.OK)
-    public ResponseEntity<User> updateUser(@PathVariable Long id, @RequestBody User user) {
-        User updatedUser = userService.updateUser(user, id);
-        return ResponseEntity.ok().body(updatedUser);
+    public ResponseEntity<UserResponse> updateUser(@PathVariable Long id, @RequestBody RegisterRequest req) {
+        UserResponse response = userService.updateUser(req, id);
+        return ResponseEntity.ok().body(response);
 
     }
 
