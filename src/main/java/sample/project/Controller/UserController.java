@@ -19,6 +19,7 @@ import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
 import sample.project.DTO.request.LoginRequest;
 import sample.project.DTO.request.RegisterRequest;
 import sample.project.DTO.response.LoginResponse;
@@ -30,13 +31,10 @@ import sample.project.Service.UserService;
 
 @RestController
 @RequestMapping("/users")
+@RequiredArgsConstructor
 public class UserController {
 
-    private UserService userService;
-
-    public UserController(UserService userService) {
-        this.userService = userService;
-    }
+    private final UserService userService;
 
     @PostMapping("/public")
     @ResponseStatus(HttpStatus.CREATED)
@@ -57,6 +55,7 @@ public class UserController {
 
     @GetMapping("/{id}")
     @ResponseStatus(HttpStatus.OK)
+    @PreAuthorize("hasAnyRole('AGENT', 'COMPANY')")
     public ResponseEntity<UserResponse> getUser(@PathVariable Long id, @AuthenticationPrincipal User currentUser) {
 
         if (!currentUser.getId().equals(id)) {
@@ -78,22 +77,20 @@ public class UserController {
 
     @PutMapping("/{id}")
     @ResponseStatus(HttpStatus.OK)
-    @PreAuthorize("hasRole('USER')")
+    @PreAuthorize("hasAnyRole('AGENT', 'COMPANY')")
     public ResponseEntity<UserResponse> updateUser(@PathVariable Long id, @RequestBody RegisterRequest req,
             @AuthenticationPrincipal User currentUser) {
         if (!currentUser.getId().equals(id)) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Access denied");
-
         }
 
         UserResponse response = userService.updateUser(req, id);
         return ResponseEntity.ok().body(response);
-
     }
 
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    @PreAuthorize("hasRole('USER')")
+    @PreAuthorize("hasAnyRole('AGENT', 'COMPANY')")
     public void deleteUser(@PathVariable Long id, @AuthenticationPrincipal User currentUser) {
 
         if (!currentUser.getId().equals(id)) {

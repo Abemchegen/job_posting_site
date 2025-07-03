@@ -7,19 +7,15 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 
+import lombok.RequiredArgsConstructor;
 import sample.project.Model.User;
-import sample.project.exception.UserNotFound;
-import sample.project.repo.UserRepo;
+import sample.project.Repo.UserRepo;
 
 @Service
+@RequiredArgsConstructor
 public class UserDetailService implements UserDetailsService {
 
-    private UserRepo userRepo;
-
-    public UserDetailService(UserRepo userRepo) {
-        this.userRepo = userRepo;
-
-    }
+    private final UserRepo userRepo;
 
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
@@ -35,11 +31,11 @@ public class UserDetailService implements UserDetailsService {
 
     }
 
-    public UserDetails loadUserById(Long id) throws UserNotFound {
+    public UserDetails loadUserById(Long id) {
         Optional<User> user = userRepo.findById(id);
 
         if (!user.isPresent()) {
-            throw new UserNotFound("id");
+            return null;
         }
 
         else {

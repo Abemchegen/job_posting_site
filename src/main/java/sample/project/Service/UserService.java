@@ -11,6 +11,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import jakarta.transaction.Transactional;
+import lombok.RequiredArgsConstructor;
 import sample.project.Auth.JwtService;
 import sample.project.DTO.request.LoginRequest;
 import sample.project.DTO.request.RegisterRequest;
@@ -18,40 +19,42 @@ import sample.project.DTO.response.LoginResponse;
 import sample.project.DTO.response.RegisterResponse;
 import sample.project.DTO.response.UserResponse;
 import sample.project.DTO.response.UserResponseList;
+import sample.project.ErrorHandling.Exception.CompanyInformationRequired;
+import sample.project.ErrorHandling.Exception.ObjectAlreadyExists;
+import sample.project.ErrorHandling.Exception.ObjectNotFound;
+import sample.project.Model.Agent;
+import sample.project.Model.Company;
+import sample.project.Model.Cv;
 import sample.project.Model.Role;
 import sample.project.Model.User;
-import sample.project.exception.UserNotFound;
-import sample.project.exception.UserWithThisIdentifierExists;
-import sample.project.repo.UserRepo;
+import sample.project.Repo.UserRepo;
 
 @Service
+@RequiredArgsConstructor
 public class UserService {
-    private UserRepo userRepo;
-    private PasswordEncoder passwordEncoder;
-    private AuthenticationManager authenticationManager;
-    private JwtService jwtService;
+    private final UserRepo userRepo;
+    private final PasswordEncoder passwordEncoder;
+    private final AuthenticationManager authenticationManager;
+    private final JwtService jwtService;
+    private final CompanyService companyService;
+    private final AgentService agentService;
 
-    public UserService(UserRepo userRepo, PasswordEncoder passwordEncoder,
-            AuthenticationManager authenticationManager, JwtService jwtService) {
-        this.userRepo = userRepo;
-        this.passwordEncoder = passwordEncoder;
-        this.authenticationManager = authenticationManager;
-        this.jwtService = jwtService;
-
-    }
-
+    @Transactional
     public RegisterResponse createUser(RegisterRequest req) {
+        if ((req.role().equals("COMPANY")) && (req.companyName() == null || req.companyPhonenumber() == null)) {
+            throw new CompanyInformationRequired();
+        }
         Optional<User> exsistingUserEmail = getUserByEmail(req.email());
         if (exsistingUserEmail.isPresent()) {
-            throw new UserWithThisIdentifierExists("email");
+            throw new ObjectAlreadyExists("User", "email");
         }
         Optional<User> exsistingUserPhonenumber = getUserByPhonenumber(req.phonenumber());
         if (exsistingUserPhonenumber.isPresent()) {
-            throw new UserWithThisIdentifierExists("phonenumber");
+            throw new ObjectAlreadyExists("User", "phonenumber");
         }
         Optional<User> exsistingUserUsername = getUserByUsername(req.username());
         if (exsistingUserUsername.isPresent()) {
-            throw new UserWithThisIdentifierExists("username");
+            throw new ObjectAlreadyExists("User", "username");
         }
 
         User user = new User();
@@ -61,9 +64,20 @@ public class UserService {
         user.setPhonenumber(req.phonenumber());
         user.setBirthdate(req.birthdate());
         user.setPassword(req.password());
-        user.setRole(Role.USER);
         user.setPassword(passwordEncoder.encode(user.getPassword()));
+
+        if ((req.role().equals("COMPANY")) || (req.role().equals("AGENT"))) {
+            user.setRole(Role.valueOf(req.role()));
+        }
+        if (req.role().equals("COMPANY")) {
+            Company company = companyService.findOrCreateCompany(req.companyName(), req.companyPhonenumber());
+            user.setCompany(company);
+        }
         User savedUser = userRepo.save(user);
+        if (req.role().equals("AGENT")) {
+            agentService.addAgent(savedUser);
+        }
+
         String token = jwtService.generateToken(user);
 
         return new RegisterResponse(savedUser.getId(), savedUser.getUsername(), token);
@@ -71,9 +85,30 @@ public class UserService {
 
     public UserResponse getUser(Long id) {
         User user = userRepo.findById(id)
-                .orElseThrow(() -> new UserNotFound("id"));
-        UserResponse response = new UserResponse(user.getId(), user.getName(), user.getUsername(), user.getEmail(),
+                .orElseThrow(() -> new ObjectNotFound("User", "id"));
+
+        String companyName = null;
+        String companyPhonenumber = null;
+        Long companyID = null;
+        Cv cv = null;
+        if (user.getCompany() != null) {
+            Company company = user.getCompany();
+            companyName = company.getName();
+            companyPhonenumber = company.getPhoneNumber();
+            companyID = company.getId();
+        }
+
+        else if (user.getAgent() != null) {
+            Agent agent = user.getAgent();
+            cv = agent.getCv();
+        }
+
+        UserResponse response = new UserResponse(user.getId(), user.getName(), user.getUsername(), companyID,
+                companyName,
+                companyPhonenumber, cv,
+                user.getEmail(),
                 user.getPhonenumber(), user.getBirthdate(), user.getRole());
+
         return response;
     }
 
@@ -101,7 +136,24 @@ public class UserService {
 
         for (int i = 0; i < users.size(); i++) {
             User user = users.get(i);
-            responseList.add(new UserResponse(user.getId(), user.getName(), user.getUsername(),
+            String companyName = null;
+            String companyPhonenumber = null;
+            Cv cv = null;
+            Long companyID = null;
+            if (user.getCompany() != null) {
+                Company company = user.getCompany();
+                companyName = company.getName();
+                companyPhonenumber = company.getPhoneNumber();
+                companyID = company.getId();
+
+            }
+
+            else if (user.getAgent() != null) {
+                Agent agent = user.getAgent();
+                cv = agent.getCv();
+            }
+            responseList.add(new UserResponse(user.getId(), user.getName(), user.getUsername(), companyID, companyName,
+                    companyPhonenumber, cv,
                     user.getEmail(), user.getPhonenumber(), user.getBirthdate(), user.getRole()));
         }
 
@@ -126,22 +178,22 @@ public class UserService {
     public UserResponse updateUser(RegisterRequest req, Long id) {
 
         User user = userRepo.findById(id)
-                .orElseThrow(() -> new UserNotFound("id"));
+                .orElseThrow(() -> new ObjectNotFound("Users", "id"));
 
         // check if another user with the same credentials as the update already exsists
         // in the database.
         Optional<User> exsistingUserEmail = getUserByEmail(req.email());
         if (exsistingUserEmail.isPresent() && !exsistingUserEmail.get().getEmail().equals(user.getEmail())) {
-            throw new UserWithThisIdentifierExists("email");
+            throw new ObjectAlreadyExists("User", "email");
         }
         Optional<User> exsistingUserPhonenumber = getUserByPhonenumber(req.phonenumber());
         if (exsistingUserPhonenumber.isPresent()
                 && !exsistingUserEmail.get().getPhonenumber().equals(user.getPhonenumber())) {
-            throw new UserWithThisIdentifierExists("phonenumber");
+            throw new ObjectAlreadyExists("User", "phonenumber");
         }
         Optional<User> exsistingUserUsername = getUserByUsername(req.username());
         if (exsistingUserUsername.isPresent() && !exsistingUserEmail.get().getUsername().equals(user.getUsername())) {
-            throw new UserWithThisIdentifierExists("username");
+            throw new ObjectAlreadyExists("User", "username");
         }
 
         if (req.name() != null) {
@@ -162,14 +214,41 @@ public class UserService {
         if (req.username() != null) {
             user.setUsername(req.username());
         }
+        String companyName = null;
+        String companyPhonenumber = null;
+        Cv cv = null;
+        Long companyID = null;
+        if (user.getCompany() != null) {
+            Company company = user.getCompany();
+            companyName = company.getName();
+            companyPhonenumber = company.getPhoneNumber();
+            companyID = company.getId();
 
-        return new UserResponse(user.getId(), user.getName(), user.getUsername(),
+        }
+
+        else if (user.getAgent() != null) {
+            Agent agent = user.getAgent();
+            cv = agent.getCv();
+        }
+
+        return new UserResponse(user.getId(), user.getName(), user.getUsername(), companyID, companyName,
+                companyPhonenumber, cv,
                 user.getEmail(), user.getPhonenumber(), user.getBirthdate(),
                 user.getRole());
     }
 
     public void deleteUser(Long id) {
-        userRepo.findById(id).orElseThrow(() -> new UserNotFound("id"));
+        Optional<User> optionalUser = userRepo.findById(id);
+        if (!optionalUser.isPresent()) {
+            throw new ObjectNotFound("User", "id");
+        }
+
+        User user = optionalUser.get();
+        if (user.getAgent() != null) {
+            agentService.deleteAgent(id);
+        }
+
         userRepo.deleteById(id);
+
     }
 }

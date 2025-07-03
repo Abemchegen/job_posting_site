@@ -1,4 +1,4 @@
-package sample.project.exception;
+package sample.project.ErrorHandling.Advice;
 
 import java.util.Map;
 

@@ -1,4 +1,4 @@
-package sample.project.repo;
+package sample.project.Repo;
 
 import java.util.Optional;
 
