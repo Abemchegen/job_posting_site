@@ -1,5 +1,6 @@
 package sample.project.Service;
 
+import java.util.List;
 import java.util.Optional;
 
 import org.springframework.stereotype.Service;
@@ -11,6 +12,7 @@ import sample.project.DTO.response.UserResponse;
 import sample.project.ErrorHandling.Exception.ObjectNotFound;
 import sample.project.Model.Agent;
 import sample.project.Model.Cv;
+import sample.project.Model.JobApplication;
 import sample.project.Model.Resume;
 import sample.project.Model.User;
 import sample.project.Repo.AgentRepo;
@@ -101,6 +103,20 @@ public class AgentService {
             throw new ObjectNotFound("User", "id");
         }
         agentRepo.deleteById(id);
+    }
+
+    public List<JobApplication> getMyJobApplications(Long id) {
+        Optional<Agent> agent = agentRepo.findById(id);
+        if (!agent.isPresent()) {
+            throw new ObjectNotFound("User", "id");
+        }
+
+        return agent.get().getJobApplications();
+
+    }
+
+    public Optional<Agent> findAgentById(Long agentId) {
+        return agentRepo.findById(agentId);
     }
 
 }

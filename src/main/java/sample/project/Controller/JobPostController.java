@@ -4,10 +4,12 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import sample.project.DTO.request.JobPostRequest;
 import sample.project.DTO.request.UpdateJobPost;
 import sample.project.Model.Company;
+import sample.project.Model.JobApplication;
 import sample.project.Model.JobPost;
 import sample.project.Model.User;
 import sample.project.Service.JobPostService;
@@ -33,7 +35,7 @@ public class JobPostController {
 
     @PostMapping("/create")
     @PreAuthorize("hasRole('COMPANY')")
-    public ResponseEntity<JobPost> createJobPost(@RequestBody JobPostRequest req,
+    public ResponseEntity<JobPost> createJobPost(@Valid @RequestBody JobPostRequest req,
             @AuthenticationPrincipal User currentUser) {
 
         Company company = currentUser.getCompany();
@@ -76,6 +78,23 @@ public class JobPostController {
         jobPostService.deleteJobPost(id);
 
         return ResponseEntity.ok().body("Post deleted Successfully.");
+    }
+
+    @GetMapping("/jobAplications/{id}")
+    @PreAuthorize("hasRole('COMPANY')")
+    public ResponseEntity<List<JobApplication>> getAllJobApplications(@PathVariable Long jobPostID,
+            @AuthenticationPrincipal User currentUser) {
+        JobPost existingjobPost = jobPostService.getJobPostById(jobPostID);
+        Company company = currentUser.getCompany();
+
+        boolean isSameCompany = company.getName().equals(existingjobPost.getCompany().getName());
+        if (!isSameCompany) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Access denied");
+        }
+        List<JobApplication> jobApplications = jobPostService.getJobApplications(jobPostID);
+
+        return ResponseEntity.ok().body(jobApplications);
+
     }
 
     @GetMapping

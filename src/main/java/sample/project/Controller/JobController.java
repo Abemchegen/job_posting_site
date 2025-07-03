@@ -3,6 +3,7 @@ package sample.project.Controller;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import sample.project.DTO.request.CreateJobRequest;
 import sample.project.DTO.request.SubCatagoriesRequest;
@@ -28,14 +29,14 @@ public class JobController {
 
     @PostMapping("/addJob")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<Job> addJob(@RequestBody CreateJobRequest request) {
+    public ResponseEntity<Job> addJob(@Valid @RequestBody CreateJobRequest request) {
         Job job = adminSerice.addJob(request);
         return ResponseEntity.ok().body(job);
     }
 
     @PostMapping("/addSubcatagories")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<Job> addSubCatagories(@RequestBody SubCatagoriesRequest request) {
+    public ResponseEntity<Job> addSubCatagories(@Valid @RequestBody SubCatagoriesRequest request) {
         Job job = adminSerice.addSubCatagories(request);
         return ResponseEntity.ok().body(job);
     }

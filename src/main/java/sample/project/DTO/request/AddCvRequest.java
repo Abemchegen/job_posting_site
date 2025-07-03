@@ -2,6 +2,7 @@ package sample.project.DTO.request;
 
 import java.util.List;
 
+import jakarta.validation.constraints.NotEmpty;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -14,9 +15,13 @@ import sample.project.Model.Project;
 @NoArgsConstructor
 @Data
 public class AddCvRequest {
+    @NotEmpty
     private String imageUrl;
+    @NotEmpty
     private List<Experiance> experiance;
+    @NotEmpty
     private List<Education> education;
+    @NotEmpty
     private List<Project> project;
     private List<Award> award;
 }

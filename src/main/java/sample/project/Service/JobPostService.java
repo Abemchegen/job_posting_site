@@ -12,6 +12,7 @@ import sample.project.DTO.request.UpdateJobPost;
 import sample.project.ErrorHandling.Exception.ObjectNotFound;
 import sample.project.Model.Company;
 import sample.project.Model.Job;
+import sample.project.Model.JobApplication;
 import sample.project.Model.JobPost;
 import sample.project.Repo.JobPostRepo;
 
@@ -96,6 +97,17 @@ public class JobPostService {
         }
 
         return optionalJobPost.get();
+    }
+
+    public List<JobApplication> getJobApplications(Long id) {
+
+        Optional<JobPost> optionalJobPost = jobPostRepo.findById(id);
+        if (!optionalJobPost.isPresent()) {
+            throw new ObjectNotFound("Job post", "id");
+        }
+
+        return optionalJobPost.get().getJobApplications();
+
     }
 
 }
