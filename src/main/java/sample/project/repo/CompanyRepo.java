@@ -10,6 +10,6 @@ public interface CompanyRepo extends JpaRepository<Company, Long> {
 
     Optional<Company> findByName(String name);
 
-    Optional<Company> findByPhonenumber(String phonenumber);
+    Optional<Company> findByPhoneNumber(String phonenumber);
 
 }

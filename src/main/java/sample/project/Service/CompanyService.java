@@ -42,7 +42,7 @@ public class CompanyService {
         if (optionalCompanyName.isPresent()) {
             throw new ObjectAlreadyExists("Company", "name");
         }
-        Optional<Company> optionalCompanyPhonenum = companyRepo.findByPhonenumber(req.phonenumber());
+        Optional<Company> optionalCompanyPhonenum = companyRepo.findByPhoneNumber(req.phonenumber());
 
         if (optionalCompanyPhonenum.isPresent()) {
             throw new ObjectAlreadyExists("Company", "phonenumber");

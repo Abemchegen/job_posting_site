@@ -29,7 +29,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 @RequiredArgsConstructor
 public class AgentController {
 
-    private AgentService agentService;
+    private final AgentService agentService;
 
     @PostMapping("/uploadCv/{id}")
     @PreAuthorize("hasRole('AGENT')")

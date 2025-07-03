@@ -11,8 +11,12 @@ import sample.project.DTO.request.AddCvRequest;
 import sample.project.DTO.response.UserResponse;
 import sample.project.ErrorHandling.Exception.ObjectNotFound;
 import sample.project.Model.Agent;
+import sample.project.Model.Award;
 import sample.project.Model.Cv;
+import sample.project.Model.Education;
+import sample.project.Model.Experiance;
 import sample.project.Model.JobApplication;
+import sample.project.Model.Project;
 import sample.project.Model.Resume;
 import sample.project.Model.User;
 import sample.project.Repo.AgentRepo;
@@ -33,6 +37,21 @@ public class AgentService {
     public UserResponse addCv(AddCvRequest req, Long agentId) {
         Cv cv = new Cv();
         Resume resume = new Resume();
+        for (Education edu : req.getEducation()) {
+            edu.setResume(resume);
+        }
+        for (Experiance ex : req.getExperiance()) {
+            ex.setResume(resume);
+        }
+        for (Project pro : req.getProject()) {
+            pro.setResume(resume);
+        }
+
+        if (req.getAward() != null) {
+            for (Award awa : req.getAward()) {
+                awa.setResume(resume);
+            }
+        }
         resume.setEducation(req.getEducation());
         resume.setExperiance(req.getExperiance());
         resume.setProject(req.getProject());
@@ -68,18 +87,31 @@ public class AgentService {
         Agent agent = optionalAgent.get();
 
         Cv cv = agent.getCv();
-        Resume resume = new Resume();
+        Resume resume = cv.getResume();
 
         if (req.getAward() != null) {
+            for (Award awa : req.getAward()) {
+                awa.setResume(resume);
+            }
             resume.setAward(req.getAward());
         }
         if (req.getEducation() != null) {
+            for (Education edu : req.getEducation()) {
+                edu.setResume(resume);
+            }
             resume.setEducation(req.getEducation());
         }
         if (req.getExperiance() != null) {
+
+            for (Experiance ex : req.getExperiance()) {
+                ex.setResume(resume);
+            }
             resume.setExperiance(req.getExperiance());
         }
         if (req.getProject() != null) {
+            for (Project pro : req.getProject()) {
+                pro.setResume(resume);
+            }
             resume.setProject(req.getProject());
         }
         if (req.getImageUrl() != null) {
