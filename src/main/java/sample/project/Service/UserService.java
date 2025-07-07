@@ -46,7 +46,7 @@ public class UserService {
     @Transactional
     public RegisterResponse createUser(RegisterRequest req) {
 
-        if ((!req.getRole().equals("COMPANY")) || (!req.getRole().equals("AGENT"))) {
+        if ((!req.getRole().equals("COMPANY")) && (!req.getRole().equals("AGENT"))) {
             throw new AccessDenied();
         }
         if (req.getRole().equals("COMPANY")) {

@@ -64,7 +64,7 @@ public class JobApplicationService {
     public JobApplicationResponse findById(Long jobApplicationID) {
         Optional<JobApplication> jobApplication = jobApplicationRepo.findById(jobApplicationID);
         if (!jobApplication.isPresent()) {
-            throw new ObjectNotFound("Job APplication", "id");
+            throw new ObjectNotFound("Job Application", "id");
         }
 
         JobApplication app = jobApplication.get();
