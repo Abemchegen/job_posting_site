@@ -1,5 +1,5 @@
 package sample.project.DTO.request;
 
-public record CompanyUpdateRequest(Long companyID, String name, String phonenumber) {
+public record CompanyUpdateRequest(String name, String phonenumber) {
 
 }

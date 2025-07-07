@@ -2,6 +2,8 @@ package sample.project.Model;
 
 import java.util.List;
 
+import com.fasterxml.jackson.annotation.JsonManagedReference;
+
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
@@ -18,12 +20,15 @@ import lombok.NoArgsConstructor;
 @Data
 public class Agent {
     @Id
-    private Long id;
-    @OneToOne
+    private long id;
+    @OneToOne(cascade = CascadeType.ALL, orphanRemoval = true)
+    @JsonManagedReference("agent-user")
     @MapsId
     private User user;
     @OneToOne(cascade = CascadeType.ALL, orphanRemoval = true)
+    @JsonManagedReference("agent-cv")
     private Cv cv;
-    @OneToMany(mappedBy = "agent")
+    @OneToMany(mappedBy = "agent", cascade = CascadeType.ALL, orphanRemoval = true)
+    @JsonManagedReference("agent-jobapplication")
     private List<JobApplication> JobApplications;
 }

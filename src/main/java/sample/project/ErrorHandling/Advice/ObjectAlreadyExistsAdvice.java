@@ -12,6 +12,6 @@ public class ObjectAlreadyExistsAdvice {
 
     @ExceptionHandler(ObjectAlreadyExists.class)
     public ResponseEntity<String> objectAlreadyExistsHandler(ObjectAlreadyExists ex) {
-        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ex.getMessage());
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ex.getMessage());
     }
 }

@@ -2,6 +2,8 @@ package sample.project.Model;
 
 import java.util.List;
 
+import com.fasterxml.jackson.annotation.JsonManagedReference;
+
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -21,11 +23,11 @@ import lombok.NoArgsConstructor;
 public class Job {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    private long id;
     private String name;
     private String description;
     @OneToMany(mappedBy = "job", cascade = CascadeType.ALL, orphanRemoval = true)
+    @JsonManagedReference("job-subcatagory")
     private List<Subcatagory> subcatagory;
-    @OneToMany(mappedBy = "job")
-    private List<JobPost> jobPosts;
+
 }

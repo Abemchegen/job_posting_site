@@ -1,6 +1,7 @@
 package sample.project.Service;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
@@ -15,13 +16,16 @@ import lombok.RequiredArgsConstructor;
 import sample.project.Auth.JwtService;
 import sample.project.DTO.request.LoginRequest;
 import sample.project.DTO.request.RegisterRequest;
+import sample.project.DTO.response.AgentResponse;
+import sample.project.DTO.response.CompanyResponse;
 import sample.project.DTO.response.LoginResponse;
 import sample.project.DTO.response.RegisterResponse;
 import sample.project.DTO.response.UserResponse;
 import sample.project.DTO.response.UserResponseList;
-import sample.project.ErrorHandling.Exception.CompanyInformationRequired;
+import sample.project.ErrorHandling.Exception.AccessDenied;
 import sample.project.ErrorHandling.Exception.ObjectAlreadyExists;
 import sample.project.ErrorHandling.Exception.ObjectNotFound;
+import sample.project.ErrorHandling.Exception.RequiredFieldsEmpty;
 import sample.project.Model.Agent;
 import sample.project.Model.Company;
 import sample.project.Model.Cv;
@@ -41,40 +45,51 @@ public class UserService {
 
     @Transactional
     public RegisterResponse createUser(RegisterRequest req) {
-        if ((req.role().equals("COMPANY")) && (req.companyName() == null || req.companyPhonenumber() == null)) {
-            throw new CompanyInformationRequired();
+
+        if ((!req.getRole().equals("COMPANY")) || (!req.getRole().equals("AGENT"))) {
+            throw new AccessDenied();
         }
-        Optional<User> exsistingUserEmail = getUserByEmail(req.email());
+        if (req.getRole().equals("COMPANY")) {
+            if (req.getCompanyName() == null) {
+                throw new RequiredFieldsEmpty("Company", Collections.singletonList("Company name"));
+
+            } else if (req.getCompanyPhonenumber() == null) {
+                throw new RequiredFieldsEmpty("Company", Collections.singletonList("Company Phonenumber"));
+
+            }
+        }
+
+        Optional<User> exsistingUserEmail = getUserByEmail(req.getEmail());
         if (exsistingUserEmail.isPresent()) {
             throw new ObjectAlreadyExists("User", "email");
         }
-        Optional<User> exsistingUserPhonenumber = getUserByPhonenumber(req.phonenumber());
+        Optional<User> exsistingUserPhonenumber = getUserByPhonenumber(req.getPhonenumber());
         if (exsistingUserPhonenumber.isPresent()) {
             throw new ObjectAlreadyExists("User", "phonenumber");
         }
-        Optional<User> exsistingUserUsername = getUserByUsername(req.username());
+        Optional<User> exsistingUserUsername = getUserByUsername(req.getUsername());
         if (exsistingUserUsername.isPresent()) {
             throw new ObjectAlreadyExists("User", "username");
         }
 
         User user = new User();
-        user.setName(req.name());
-        user.setUsername(req.username());
-        user.setEmail(req.email());
-        user.setPhonenumber(req.phonenumber());
-        user.setBirthdate(req.birthdate());
-        user.setPassword(req.password());
+        user.setName(req.getName());
+        user.setUsername(req.getUsername());
+        user.setEmail(req.getEmail());
+        user.setPhonenumber(req.getPhonenumber());
+        user.setBirthdate(req.getBirthdate());
+        user.setPassword(req.getPassword());
         user.setPassword(passwordEncoder.encode(user.getPassword()));
 
-        if ((req.role().equals("COMPANY")) || (req.role().equals("AGENT"))) {
-            user.setRole(Role.valueOf(req.role()));
+        if ((req.getRole().equals("COMPANY")) || (req.getRole().equals("AGENT"))) {
+            user.setRole(Role.valueOf(req.getRole()));
         }
-        if (req.role().equals("COMPANY")) {
-            Company company = companyService.findOrCreateCompany(req.companyName(), req.companyPhonenumber());
+        if (req.getRole().equals("COMPANY")) {
+            Company company = companyService.findOrCreateCompany(req.getCompanyName(), req.getCompanyPhonenumber());
             user.setCompany(company);
         }
         User savedUser = userRepo.save(user);
-        if (req.role().equals("AGENT")) {
+        if (req.getRole().equals("AGENT")) {
             agentService.addAgent(savedUser);
         }
 
@@ -96,20 +111,38 @@ public class UserService {
             companyName = company.getName();
             companyPhonenumber = company.getPhoneNumber();
             companyID = company.getId();
+            return CompanyResponse.builder()
+                    .id(user.getId())
+                    .birthdate(user.getBirthdate())
+                    .email(user.getEmail())
+                    .companyId(companyID)
+                    .companyName(companyName)
+                    .companyPhonenumber(companyPhonenumber)
+                    .phonenumber(user.getPhonenumber())
+                    .name(user.getName())
+                    .username(user.getUsername())
+                    .role(user.getRole())
+                    .build();
         }
 
         else if (user.getAgent() != null) {
             Agent agent = user.getAgent();
             cv = agent.getCv();
+            return AgentResponse.builder()
+                    .id(agent.getId())
+                    .birthdate(user.getBirthdate())
+                    .email(user.getEmail())
+                    .phonenumber(user.getPhonenumber())
+                    .name(user.getName())
+                    .username(user.getUsername())
+                    .role(user.getRole())
+                    .cv(cv)
+                    .build();
+
+        } else {
+            throw new AccessDenied();
         }
 
-        UserResponse response = new UserResponse(user.getId(), user.getName(), user.getUsername(), companyID,
-                companyName,
-                companyPhonenumber, cv,
-                user.getEmail(),
-                user.getPhonenumber(), user.getBirthdate(), user.getRole());
-
-        return response;
     }
 
     public LoginResponse login(LoginRequest req) {
@@ -145,16 +178,38 @@ public class UserService {
                 companyName = company.getName();
                 companyPhonenumber = company.getPhoneNumber();
                 companyID = company.getId();
+                UserResponse response = CompanyResponse.builder()
+                        .id(user.getId())
+                        .birthdate(user.getBirthdate())
+                        .email(user.getEmail())
+                        .phonenumber(user.getPhonenumber())
+                        .name(user.getName())
+                        .username(user.getUsername())
+                        .role(user.getRole())
+                        .companyId(companyID)
+                        .companyName(companyName)
+                        .companyPhonenumber(companyPhonenumber)
+                        .build();
+                responseList.add(response);
 
             }
 
             else if (user.getAgent() != null) {
                 Agent agent = user.getAgent();
                 cv = agent.getCv();
+                UserResponse response = AgentResponse.builder()
+                        .id(agent.getId())
+                        .birthdate(user.getBirthdate())
+                        .email(user.getEmail())
+                        .phonenumber(user.getPhonenumber())
+                        .name(user.getName())
+                        .username(user.getUsername())
+                        .role(user.getRole())
+                        .cv(cv)
+                        .build();
+                responseList.add(response);
             }
-            responseList.add(new UserResponse(user.getId(), user.getName(), user.getUsername(), companyID, companyName,
-                    companyPhonenumber, cv,
-                    user.getEmail(), user.getPhonenumber(), user.getBirthdate(), user.getRole()));
+
         }
 
         return new UserResponseList(responseList);
@@ -182,37 +237,37 @@ public class UserService {
 
         // check if another user with the same credentials as the update already exsists
         // in the database.
-        Optional<User> exsistingUserEmail = getUserByEmail(req.email());
+        Optional<User> exsistingUserEmail = getUserByEmail(req.getEmail());
         if (exsistingUserEmail.isPresent() && !exsistingUserEmail.get().getEmail().equals(user.getEmail())) {
             throw new ObjectAlreadyExists("User", "email");
         }
-        Optional<User> exsistingUserPhonenumber = getUserByPhonenumber(req.phonenumber());
+        Optional<User> exsistingUserPhonenumber = getUserByPhonenumber(req.getPhonenumber());
         if (exsistingUserPhonenumber.isPresent()
                 && !exsistingUserEmail.get().getPhonenumber().equals(user.getPhonenumber())) {
             throw new ObjectAlreadyExists("User", "phonenumber");
         }
-        Optional<User> exsistingUserUsername = getUserByUsername(req.username());
+        Optional<User> exsistingUserUsername = getUserByUsername(req.getUsername());
         if (exsistingUserUsername.isPresent() && !exsistingUserEmail.get().getUsername().equals(user.getUsername())) {
             throw new ObjectAlreadyExists("User", "username");
         }
 
-        if (req.name() != null) {
-            user.setName(req.name());
+        if (req.getName() != null) {
+            user.setName(req.getName());
         }
-        if (req.email() != null) {
-            user.setEmail(req.email());
+        if (req.getEmail() != null) {
+            user.setEmail(req.getEmail());
         }
-        if (req.password() != null) {
-            user.setPassword(passwordEncoder.encode(req.password()));
+        if (req.getPassword() != null) {
+            user.setPassword(passwordEncoder.encode(req.getPassword()));
         }
-        if (req.birthdate() != null) {
-            user.setBirthdate(req.birthdate());
+        if (req.getBirthdate() != null) {
+            user.setBirthdate(req.getBirthdate());
         }
-        if (req.phonenumber() != null) {
-            user.setPhonenumber(req.phonenumber());
+        if (req.getPhonenumber() != null) {
+            user.setPhonenumber(req.getPhonenumber());
         }
-        if (req.username() != null) {
-            user.setUsername(req.username());
+        if (req.getUsername() != null) {
+            user.setUsername(req.getUsername());
         }
         String companyName = null;
         String companyPhonenumber = null;
@@ -223,18 +278,39 @@ public class UserService {
             companyName = company.getName();
             companyPhonenumber = company.getPhoneNumber();
             companyID = company.getId();
+            return CompanyResponse.builder()
+                    .id(user.getId())
+                    .birthdate(user.getBirthdate())
+                    .email(user.getEmail())
+                    .phonenumber(user.getPhonenumber())
+                    .name(user.getName())
+                    .username(user.getUsername())
+                    .role(user.getRole())
+                    .companyId(companyID)
+                    .companyName(companyName)
+                    .companyPhonenumber(companyPhonenumber)
+                    .build();
 
         }
 
         else if (user.getAgent() != null) {
             Agent agent = user.getAgent();
             cv = agent.getCv();
+
+            return AgentResponse.builder()
+                    .id(agent.getId())
+                    .birthdate(user.getBirthdate())
+                    .email(user.getEmail())
+                    .phonenumber(user.getPhonenumber())
+                    .name(user.getName())
+                    .username(user.getUsername())
+                    .role(user.getRole())
+                    .cv(cv)
+                    .build();
+        } else {
+            throw new AccessDenied();
         }
 
-        return new UserResponse(user.getId(), user.getName(), user.getUsername(), companyID, companyName,
-                companyPhonenumber, cv,
-                user.getEmail(), user.getPhonenumber(), user.getBirthdate(),
-                user.getRole());
     }
 
     public void deleteUser(Long id) {

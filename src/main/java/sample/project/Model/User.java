@@ -9,7 +9,8 @@ import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
-import jakarta.persistence.CascadeType;
+import com.fasterxml.jackson.annotation.JsonBackReference;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -39,7 +40,7 @@ import lombok.RequiredArgsConstructor;
 public class User implements UserDetails {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    private long id;
     @NotEmpty
     @NonNull
     private String name;
@@ -61,8 +62,10 @@ public class User implements UserDetails {
     private Role role;
 
     @ManyToOne
+    @JsonBackReference("company-user")
     private Company company;
-    @OneToOne(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToOne(mappedBy = "user")
+    @JsonBackReference("agent-user")
     private Agent agent;
 
     @Override

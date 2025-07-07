@@ -1,5 +1,17 @@
+
 package sample.project.DTO.request;
 
-public record UpdateJobPost(String description, String jobName, Integer peopleNeeded,
-        Float salary) {
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+@Data
+@AllArgsConstructor
+@NoArgsConstructor
+public class UpdateJobPost {
+    private String jobName;
+    private String description;
+    private String subcatagoryName;
+    private int peopleNeeded;
+    private long salary;
 }

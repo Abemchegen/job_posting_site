@@ -2,6 +2,8 @@ package sample.project.Model;
 
 import java.util.List;
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
+
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -19,14 +21,16 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class Company {
     @OneToMany(mappedBy = "company", cascade = CascadeType.ALL, orphanRemoval = true)
+    @JsonBackReference("company-user")
     private List<User> users;
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    private long id;
     @Column(unique = true)
     private String name;
     private String phoneNumber;
-    @OneToMany(mappedBy = "company")
+    @OneToMany(mappedBy = "company", cascade = CascadeType.ALL, orphanRemoval = true)
+    @JsonBackReference("jobpost-company")
     private List<JobPost> jobPosts;
 
 }

@@ -1,5 +1,7 @@
 package sample.project.Model;
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
+
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -16,10 +18,11 @@ import lombok.NoArgsConstructor;
 public class Experiance {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    private long id;
     private String experianceName;
     private String experianceDescription;
-    private Integer experianceYear;
+    private int experianceYear;
     @ManyToOne
+    @JsonBackReference("resume-experiance")
     private Resume resume;
 }

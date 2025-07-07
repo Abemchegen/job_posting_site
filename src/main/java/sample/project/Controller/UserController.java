@@ -53,15 +53,15 @@ public class UserController {
         return ResponseEntity.ok(response);
     }
 
-    @GetMapping("/{id}")
+    @GetMapping("/{userid}")
     @ResponseStatus(HttpStatus.OK)
     @PreAuthorize("hasAnyRole('AGENT', 'COMPANY')")
-    public ResponseEntity<UserResponse> getUser(@PathVariable Long id, @AuthenticationPrincipal User currentUser) {
+    public ResponseEntity<UserResponse> getUser(@PathVariable long userid, @AuthenticationPrincipal User currentUser) {
 
-        if (!currentUser.getId().equals(id)) {
+        if (currentUser.getId() != userid) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Access denied");
         }
-        UserResponse response = userService.getUser(id);
+        UserResponse response = userService.getUser(userid);
         return ResponseEntity.ok().body(response);
     }
 
@@ -75,29 +75,31 @@ public class UserController {
 
     }
 
-    @PutMapping("/{id}")
+    @PutMapping("/{userid}")
     @ResponseStatus(HttpStatus.OK)
     @PreAuthorize("hasAnyRole('AGENT', 'COMPANY')")
-    public ResponseEntity<UserResponse> updateUser(@PathVariable Long id, @RequestBody RegisterRequest req,
+    public ResponseEntity<UserResponse> updateUser(@PathVariable long userid, @RequestBody RegisterRequest req,
             @AuthenticationPrincipal User currentUser) {
-        if (!currentUser.getId().equals(id)) {
+        if (currentUser.getId() != userid) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Access denied");
         }
 
-        UserResponse response = userService.updateUser(req, id);
+        UserResponse response = userService.updateUser(req, userid);
         return ResponseEntity.ok().body(response);
     }
 
-    @DeleteMapping("/{id}")
+    @DeleteMapping("/{userid}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     @PreAuthorize("hasAnyRole('AGENT', 'COMPANY')")
-    public void deleteUser(@PathVariable Long id, @AuthenticationPrincipal User currentUser) {
+    public ResponseEntity<String> deleteUser(@PathVariable long userid, @AuthenticationPrincipal User currentUser) {
 
-        if (!currentUser.getId().equals(id)) {
+        if (currentUser.getId() != userid) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You can only delete your own account");
         }
 
-        userService.deleteUser(id);
+        userService.deleteUser(userid);
+
+        return ResponseEntity.ok().body("User deleted successfully");
     }
 
 }

@@ -1,9 +1,32 @@
 package sample.project.DTO.request;
 
 import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+import lombok.AllArgsConstructor;
 
-public record JobPostRequest(@NotEmpty String companyName, @NotEmpty String description, @NotEmpty String jobName,
-                @NotEmpty Integer peopleNeeded,
-                @NotEmpty Float salary) {
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+public class JobPostRequest {
+    @NotEmpty
+    private String companyName;
 
+    @NotEmpty
+    private String description;
+
+    @NotEmpty
+    private String jobName;
+
+    private String subcatagoryName;
+
+    @NotNull
+    @Positive
+    private int peopleNeeded;
+
+    @NotNull
+    @Positive
+    private long salary;
 }

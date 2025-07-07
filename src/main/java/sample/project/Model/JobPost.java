@@ -2,6 +2,10 @@ package sample.project.Model;
 
 import java.util.List;
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
+import com.fasterxml.jackson.annotation.JsonManagedReference;
+
+import jakarta.persistence.CascadeType;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -19,15 +23,21 @@ import lombok.NoArgsConstructor;
 public class JobPost {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    private long id;
     @ManyToOne
+    @JsonBackReference("jobpost-company")
     private Company company;
     private String description;
+    private String jobName;
     @ManyToOne
-    private Job job;
+    @JsonBackReference("subcatagory-jobpost")
+    private Subcatagory subcatagory;
     private int peopleNeeded;
-    private float salary;
-    @OneToMany(mappedBy = "jobPost")
+    private long salary;
+    @JsonManagedReference("jobpost-jobapplication")
+    @OneToMany(mappedBy = "jobPost", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<JobApplication> JobApplications;
 
 }
+
+// filter by experiance endpoints

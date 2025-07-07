@@ -8,7 +8,7 @@ import org.springframework.stereotype.Service;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import sample.project.DTO.request.AddCvRequest;
-import sample.project.DTO.response.UserResponse;
+import sample.project.DTO.response.AgentResponse;
 import sample.project.ErrorHandling.Exception.ObjectNotFound;
 import sample.project.Model.Agent;
 import sample.project.Model.Award;
@@ -34,7 +34,7 @@ public class AgentService {
     }
 
     @Transactional
-    public UserResponse addCv(AddCvRequest req, Long agentId) {
+    public AgentResponse addCv(AddCvRequest req, Long agentId) {
         Cv cv = new Cv();
         Resume resume = new Resume();
         for (Education edu : req.getEducation()) {
@@ -69,14 +69,21 @@ public class AgentService {
         agent.setCv(cv);
 
         User user = agent.getUser();
-        return new UserResponse(user.getId(), user.getName(), user.getUsername(), null, null, null, agent.getCv(),
-                user.getEmail(), user.getPhonenumber(), user.getBirthdate(),
-                user.getRole());
+        return AgentResponse.builder()
+                .id(agentId)
+                .birthdate(user.getBirthdate())
+                .email(user.getEmail())
+                .phonenumber(user.getPhonenumber())
+                .name(user.getName())
+                .username(user.getUsername())
+                .role(user.getRole())
+                .cv(cv)
+                .build();
 
     }
 
     @Transactional
-    public UserResponse updateCv(AddCvRequest req, Long agentId) {
+    public AgentResponse updateCv(AddCvRequest req, Long agentId) {
 
         Optional<Agent> optionalAgent = agentRepo.findById(agentId);
 
@@ -93,26 +100,30 @@ public class AgentService {
             for (Award awa : req.getAward()) {
                 awa.setResume(resume);
             }
-            resume.setAward(req.getAward());
+            resume.getAward().clear();
+            resume.getAward().addAll(req.getAward());
         }
         if (req.getEducation() != null) {
             for (Education edu : req.getEducation()) {
                 edu.setResume(resume);
             }
-            resume.setEducation(req.getEducation());
+            resume.getEducation().clear();
+            resume.getEducation().addAll(req.getEducation());
         }
         if (req.getExperiance() != null) {
 
             for (Experiance ex : req.getExperiance()) {
                 ex.setResume(resume);
             }
-            resume.setExperiance(req.getExperiance());
+            resume.getExperiance().clear();
+            resume.getExperiance().addAll(req.getExperiance());
         }
         if (req.getProject() != null) {
             for (Project pro : req.getProject()) {
                 pro.setResume(resume);
             }
-            resume.setProject(req.getProject());
+            resume.getProject().clear();
+            resume.getProject().addAll(req.getProject());
         }
         if (req.getImageUrl() != null) {
             cv.setImageUrl(req.getImageUrl());
@@ -124,9 +135,16 @@ public class AgentService {
 
         agent.setCv(cv);
         User user = agent.getUser();
-        return new UserResponse(user.getId(), user.getName(), user.getUsername(), null, null, null, agent.getCv(),
-                user.getEmail(), user.getPhonenumber(), user.getBirthdate(),
-                user.getRole());
+        return AgentResponse.builder()
+                .id(agentId)
+                .birthdate(user.getBirthdate())
+                .email(user.getEmail())
+                .phonenumber(user.getPhonenumber())
+                .name(user.getName())
+                .username(user.getUsername())
+                .role(user.getRole())
+                .cv(cv)
+                .build();
     }
 
     public void deleteAgent(Long id) {

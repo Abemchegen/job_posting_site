@@ -32,7 +32,7 @@ public class SecurityConfig {
 
         return http.csrf(customizer -> customizer.disable())
                 .authorizeHttpRequests(request -> request
-                        .requestMatchers("/users/public/**").permitAll()
+                        .requestMatchers("/users/public/**", "/users/public").permitAll()
                         .anyRequest().authenticated())
                 .httpBasic(Customizer.withDefaults())
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)

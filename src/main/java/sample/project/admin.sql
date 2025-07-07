@@ -1,0 +1,2 @@
+INSERT INTO users (name, username, email, phonenumber, birthdate, password, role, company_id)
+VALUES ('Abem', 'abem', 'abem@gmail.com', '0909112233', '2000-10-10', '$2a$10$Nq58i28UKrS3d5.T9U2jZuWrxHmXqvbxuGj9/qR82rJXPVKJuTcyW', 'ADMIN', NULL);

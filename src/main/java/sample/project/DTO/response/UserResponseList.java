@@ -2,5 +2,13 @@ package sample.project.DTO.response;
 
 import java.util.List;
 
-public record UserResponseList(List<UserResponse> users) {
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+@Data
+@AllArgsConstructor
+@NoArgsConstructor
+public class UserResponseList {
+    private List<UserResponse> users;
 }

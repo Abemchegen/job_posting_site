@@ -6,11 +6,12 @@ import org.springframework.web.server.ResponseStatusException;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import sample.project.DTO.request.JobApplicationUpdateRequest;
 import sample.project.DTO.request.JobPostRequest;
 import sample.project.DTO.request.UpdateJobPost;
+import sample.project.DTO.response.JobApplicationResponse;
+import sample.project.DTO.response.JobpostResponse;
 import sample.project.Model.Company;
-import sample.project.Model.JobApplication;
-import sample.project.Model.JobPost;
 import sample.project.Model.User;
 import sample.project.Service.JobPostService;
 
@@ -35,24 +36,24 @@ public class JobPostController {
 
     @PostMapping("/create")
     @PreAuthorize("hasRole('COMPANY')")
-    public ResponseEntity<JobPost> createJobPost(@Valid @RequestBody JobPostRequest req,
+    public ResponseEntity<JobpostResponse> createJobPost(@Valid @RequestBody JobPostRequest req,
             @AuthenticationPrincipal User currentUser) {
 
         Company company = currentUser.getCompany();
-        if (!company.getName().equals(req.companyName())) {
+        if (!company.getName().equals(req.getCompanyName())) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Access denied");
         }
-        JobPost jobPost = jobPostService.postJob(req);
+        JobpostResponse jobPost = jobPostService.postJob(req);
 
         return ResponseEntity.ok().body(jobPost);
     }
 
-    @PostMapping("/update/{id}")
+    @PostMapping("/update/{jobpostID}")
     @PreAuthorize("hasRole('COMPANY')")
-    public ResponseEntity<JobPost> updateJobPost(@RequestBody UpdateJobPost req, @PathVariable Long id,
+    public ResponseEntity<JobpostResponse> updateJobPost(@RequestBody UpdateJobPost req, @PathVariable Long jobpostID,
             @AuthenticationPrincipal User currentUser) {
 
-        JobPost existingjobPost = jobPostService.getJobPostById(id);
+        JobpostResponse existingjobPost = jobPostService.getJobPostById(jobpostID);
         Company company = currentUser.getCompany();
 
         boolean isSameCompany = company.getName().equals(existingjobPost.getCompany().getName());
@@ -60,54 +61,92 @@ public class JobPostController {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Access denied");
         }
 
-        JobPost jobPost = jobPostService.updateJobPost(req, id);
+        JobpostResponse jobPost = jobPostService.updateJobPost(req, jobpostID);
 
         return ResponseEntity.ok().body(jobPost);
     }
 
-    @DeleteMapping("/{id}")
+    @DeleteMapping("/{jobpostID}")
     @PreAuthorize("hasRole('COMPANY')")
-    public ResponseEntity<String> deleteJobPost(@PathVariable Long id, @AuthenticationPrincipal User currentUser) {
-        JobPost existingjobPost = jobPostService.getJobPostById(id);
+    public ResponseEntity<String> deleteJobPost(@PathVariable Long jobpostID,
+            @AuthenticationPrincipal User currentUser) {
+        JobpostResponse existingjobPost = jobPostService.getJobPostById(jobpostID);
         Company company = currentUser.getCompany();
 
         boolean isSameCompany = company.getName().equals(existingjobPost.getCompany().getName());
         if (!isSameCompany) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Access denied");
         }
-        jobPostService.deleteJobPost(id);
+        jobPostService.deleteJobPost(jobpostID);
 
         return ResponseEntity.ok().body("Post deleted Successfully.");
     }
 
-    @GetMapping("/jobAplications/{id}")
+    @GetMapping("/{jobpostID}/jobAplications")
     @PreAuthorize("hasRole('COMPANY')")
-    public ResponseEntity<List<JobApplication>> getAllJobApplications(@PathVariable Long jobPostID,
+    public ResponseEntity<List<JobApplicationResponse>> getAllJobApplications(@PathVariable Long jobpostID,
             @AuthenticationPrincipal User currentUser) {
-        JobPost existingjobPost = jobPostService.getJobPostById(jobPostID);
+        JobpostResponse existingjobPost = jobPostService.getJobPostById(jobpostID);
         Company company = currentUser.getCompany();
 
         boolean isSameCompany = company.getName().equals(existingjobPost.getCompany().getName());
         if (!isSameCompany) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Access denied");
         }
-        List<JobApplication> jobApplications = jobPostService.getJobApplications(jobPostID);
+        List<JobApplicationResponse> jobApplications = jobPostService.getJobApplications(jobpostID);
+
+        return ResponseEntity.ok().body(jobApplications);
+
+    }
+
+    @GetMapping("/{jobPostID}/jobApplicaiton/{jobApplicationID}")
+    @PreAuthorize("hasRole('COMPANY')")
+    public ResponseEntity<JobApplicationResponse> getJobApplication(@PathVariable Long jobPostID,
+            @PathVariable Long jobApplicationID,
+            @AuthenticationPrincipal User currentUser) {
+        JobpostResponse existingjobPost = jobPostService.getJobPostById(jobPostID);
+        Company company = currentUser.getCompany();
+
+        boolean isSameCompany = company.getName().equals(existingjobPost.getCompany().getName());
+        if (!isSameCompany) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Access denied");
+        }
+        JobApplicationResponse jobApplications = jobPostService.getJobApplication(jobPostID, jobApplicationID);
+
+        return ResponseEntity.ok().body(jobApplications);
+
+    }
+
+    @PostMapping("/{jobPostID}/jobApplicaiton/{jobApplicationID}")
+    @PreAuthorize("hasRole('COMPANY')")
+    public ResponseEntity<JobApplicationResponse> updateJobApplicationStatus(@PathVariable Long jobPostID,
+            @PathVariable Long jobApplicationID,
+            @RequestBody JobApplicationUpdateRequest req,
+            @AuthenticationPrincipal User currentUser) {
+        JobpostResponse existingjobPost = jobPostService.getJobPostById(jobPostID);
+        Company company = currentUser.getCompany();
+
+        boolean isSameCompany = company.getName().equals(existingjobPost.getCompany().getName());
+        if (!isSameCompany) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Access denied");
+        }
+        JobApplicationResponse jobApplications = jobPostService.updateJobApplication(jobPostID, jobApplicationID, req);
 
         return ResponseEntity.ok().body(jobApplications);
 
     }
 
     @GetMapping
-    public ResponseEntity<List<JobPost>> getAllJobPosts() {
-        List<JobPost> jobPosts = jobPostService.getAllJobPosts();
+    public ResponseEntity<List<JobpostResponse>> getAllJobPosts() {
+        List<JobpostResponse> jobPosts = jobPostService.getAllJobPosts();
 
         return ResponseEntity.ok().body(jobPosts);
 
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<JobPost> getJobPostsById(@PathVariable Long id) {
-        JobPost jobPost = jobPostService.getJobPostById(id);
+    public ResponseEntity<JobpostResponse> getJobPostsById(@PathVariable Long id) {
+        JobpostResponse jobPost = jobPostService.getJobPostById(id);
 
         return ResponseEntity.ok().body(jobPost);
 

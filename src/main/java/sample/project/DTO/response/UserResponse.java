@@ -3,13 +3,23 @@ package sample.project.DTO.response;
 
 import java.time.LocalDate;
 
-import sample.project.Model.Cv;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+import lombok.experimental.SuperBuilder;
 import sample.project.Model.Role;
 
-public record UserResponse(Long id, String name, String username, Long companyId, String companyName,
-                String companyPhonenumber,
-                Cv cv, String email,
-                String phonenumber,
-                LocalDate birthdate,
-                Role role) {
+@Data
+@SuperBuilder
+@NoArgsConstructor
+@AllArgsConstructor
+public class UserResponse {
+    private Long id;
+    private String name;
+    private String username;
+    private String email;
+    private String phonenumber;
+    private LocalDate birthdate;
+    private Role role;
+
 }
