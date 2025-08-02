@@ -13,11 +13,15 @@ import io.jsonwebtoken.impl.lang.Function;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
 import sample.project.Model.User;
+import org.springframework.beans.factory.annotation.Value;
 
 @Service
 public class JwtService {
+    @Value("${jwt.signing.key}")
+    private String SIGNING_KEY;
 
-    private final static String SIGNING_KEY = "u1QnK4n6kQw5wK3Qw8kz3Q9v7n2p5s6t1r4v8y2x5z7b0c3d6e9g1h4j7l0m2p5";
+    // private final static String SIGNING_KEY =
+    // "u1QnK4n6kQw5wK3Qw8kz3Q9v7n2p5s6t1r4v8y2x5z7b0c3d6e9g1h4j7l0m2p5";
 
     private Claims extractAllClaims(String token) {
         return Jwts.parser()
