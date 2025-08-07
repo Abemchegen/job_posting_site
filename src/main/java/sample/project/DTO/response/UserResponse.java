@@ -16,7 +16,6 @@ import sample.project.Model.Role;
 public class UserResponse {
     private Long id;
     private String name;
-    private String username;
     private String email;
     private String phonenumber;
     private LocalDate birthdate;

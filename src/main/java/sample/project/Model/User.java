@@ -46,9 +46,6 @@ public class User implements UserDetails {
     private String name;
     @NotEmpty
     @NonNull
-    private String username;
-    @NotEmpty
-    @NonNull
     @Email
     @Column(name = "email", unique = true, nullable = false)
     private String email;
@@ -91,6 +88,11 @@ public class User implements UserDetails {
     @Override
     public boolean isCredentialsNonExpired() {
         return true;
+    }
+
+    @Override
+    public String getUsername() {
+        return email;
     }
 
 }

@@ -183,7 +183,7 @@ public class JobPostService {
         for (JobApplication app : applications) {
             Agent agent = app.getAgent();
             User user = agent.getUser();
-            UserResponse userInfo = new UserResponse(user.getId(), user.getName(), user.getUsername(),
+            UserResponse userInfo = new UserResponse(user.getId(), user.getName(),
                     user.getEmail(),
                     user.getPhonenumber(), user.getBirthdate(), user.getRole());
 
@@ -217,7 +217,7 @@ public class JobPostService {
         app.setStatus(req.getStatus());
         Agent agent = app.getAgent();
         User user = agent.getUser();
-        UserResponse userInfo = new UserResponse(user.getId(), user.getName(), user.getUsername(),
+        UserResponse userInfo = new UserResponse(user.getId(), user.getName(),
                 user.getEmail(),
                 user.getPhonenumber(), user.getBirthdate(), user.getRole());
 

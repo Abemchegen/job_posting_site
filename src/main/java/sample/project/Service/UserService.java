@@ -67,14 +67,9 @@ public class UserService {
         if (exsistingUserPhonenumber.isPresent()) {
             throw new ObjectAlreadyExists("User", "phonenumber");
         }
-        Optional<User> exsistingUserUsername = getUserByUsername(req.getUsername());
-        if (exsistingUserUsername.isPresent()) {
-            throw new ObjectAlreadyExists("User", "username");
-        }
 
         User user = new User();
         user.setName(req.getName());
-        user.setUsername(req.getUsername());
         user.setEmail(req.getEmail());
         user.setPhonenumber(req.getPhonenumber());
         user.setBirthdate(req.getBirthdate());
@@ -94,8 +89,7 @@ public class UserService {
         }
 
         String token = jwtService.generateToken(user);
-
-        return new RegisterResponse(savedUser.getId(), savedUser.getUsername(), token);
+        return new RegisterResponse(savedUser.getId(), token);
     }
 
     public UserResponse getUser(Long id) {
@@ -120,7 +114,6 @@ public class UserService {
                     .companyPhonenumber(companyPhonenumber)
                     .phonenumber(user.getPhonenumber())
                     .name(user.getName())
-                    .username(user.getUsername())
                     .role(user.getRole())
                     .build();
         }
@@ -134,7 +127,6 @@ public class UserService {
                     .email(user.getEmail())
                     .phonenumber(user.getPhonenumber())
                     .name(user.getName())
-                    .username(user.getUsername())
                     .role(user.getRole())
                     .cv(cv)
                     .build();
@@ -147,18 +139,20 @@ public class UserService {
 
     public LoginResponse login(LoginRequest req) {
         Authentication authentication = authenticationManager
-                .authenticate(new UsernamePasswordAuthenticationToken(req.username(), req.password()));
+                .authenticate(new UsernamePasswordAuthenticationToken(req.email(), req.password()));
 
         if (authentication.isAuthenticated()) {
-            Optional<User> user = getUserByUsername(req.username());
-            if (!user.isPresent()) {
-                return new LoginResponse("Login Failed.", null);
+            Optional<User> optionalUser = getUserByEmail(req.email());
+            if (!optionalUser.isPresent()) {
+                return new LoginResponse(null, null);
             }
-            String token = jwtService.generateToken(user.get());
-            return new LoginResponse("Login Successful.", token);
+            User user = optionalUser.get();
+            String token = jwtService.generateToken(user);
+
+            return new LoginResponse(user.getId(), token);
 
         } else {
-            return new LoginResponse("Login Failed.", null);
+            return new LoginResponse(null, null);
         }
     }
 
@@ -184,7 +178,6 @@ public class UserService {
                         .email(user.getEmail())
                         .phonenumber(user.getPhonenumber())
                         .name(user.getName())
-                        .username(user.getUsername())
                         .role(user.getRole())
                         .companyId(companyID)
                         .companyName(companyName)
@@ -203,7 +196,6 @@ public class UserService {
                         .email(user.getEmail())
                         .phonenumber(user.getPhonenumber())
                         .name(user.getName())
-                        .username(user.getUsername())
                         .role(user.getRole())
                         .cv(cv)
                         .build();
@@ -225,10 +217,6 @@ public class UserService {
         return userRepo.findByPhonenumber(phonenumber);
     }
 
-    public Optional<User> getUserByUsername(String username) {
-        return userRepo.findByUsername(username);
-    }
-
     @Transactional
     public UserResponse updateUser(RegisterRequest req, Long id) {
 
@@ -246,10 +234,6 @@ public class UserService {
                 && !exsistingUserEmail.get().getPhonenumber().equals(user.getPhonenumber())) {
             throw new ObjectAlreadyExists("User", "phonenumber");
         }
-        Optional<User> exsistingUserUsername = getUserByUsername(req.getUsername());
-        if (exsistingUserUsername.isPresent() && !exsistingUserEmail.get().getUsername().equals(user.getUsername())) {
-            throw new ObjectAlreadyExists("User", "username");
-        }
 
         if (req.getName() != null) {
             user.setName(req.getName());
@@ -266,9 +250,7 @@ public class UserService {
         if (req.getPhonenumber() != null) {
             user.setPhonenumber(req.getPhonenumber());
         }
-        if (req.getUsername() != null) {
-            user.setUsername(req.getUsername());
-        }
+
         String companyName = null;
         String companyPhonenumber = null;
         Cv cv = null;
@@ -284,7 +266,6 @@ public class UserService {
                     .email(user.getEmail())
                     .phonenumber(user.getPhonenumber())
                     .name(user.getName())
-                    .username(user.getUsername())
                     .role(user.getRole())
                     .companyId(companyID)
                     .companyName(companyName)
@@ -303,7 +284,6 @@ public class UserService {
                     .email(user.getEmail())
                     .phonenumber(user.getPhonenumber())
                     .name(user.getName())
-                    .username(user.getUsername())
                     .role(user.getRole())
                     .cv(cv)
                     .build();

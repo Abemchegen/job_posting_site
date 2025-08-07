@@ -50,7 +50,7 @@ public class JobApplicationService {
 
         JobApplication app = jobApplicationRepo.save(jobApplication);
         User user = agent.get().getUser();
-        UserResponse userInfo = new UserResponse(user.getId(), user.getName(), user.getUsername(), user.getEmail(),
+        UserResponse userInfo = new UserResponse(user.getId(), user.getName(), user.getEmail(),
                 user.getPhonenumber(), user.getBirthdate(), user.getRole());
 
         return new JobApplicationResponse(app.getId(), userInfo, agent.get().getCv(), app.getJobPost().getId(),
@@ -70,7 +70,7 @@ public class JobApplicationService {
         JobApplication app = jobApplication.get();
         Agent agent = app.getAgent();
         User user = agent.getUser();
-        UserResponse userInfo = new UserResponse(user.getId(), user.getName(), user.getUsername(), user.getEmail(),
+        UserResponse userInfo = new UserResponse(user.getId(), user.getName(), user.getEmail(),
                 user.getPhonenumber(), user.getBirthdate(), user.getRole());
 
         return new JobApplicationResponse(app.getId(), userInfo, agent.getCv(), app.getJobPost().getId(),
@@ -85,7 +85,7 @@ public class JobApplicationService {
             if (app.getAgent().getId() == agentID) {
                 Agent agent = app.getAgent();
                 User user = agent.getUser();
-                UserResponse userInfo = new UserResponse(user.getId(), user.getName(), user.getUsername(),
+                UserResponse userInfo = new UserResponse(user.getId(), user.getName(),
                         user.getEmail(),
                         user.getPhonenumber(), user.getBirthdate(), user.getRole());
                 response.add(new JobApplicationResponse(app.getId(), userInfo, agent.getCv(), app.getJobPost().getId(),
@@ -110,7 +110,7 @@ public class JobApplicationService {
         }
         Agent agent = jobApplication.getAgent();
         User user = agent.getUser();
-        UserResponse userInfo = new UserResponse(user.getId(), user.getName(), user.getUsername(),
+        UserResponse userInfo = new UserResponse(user.getId(), user.getName(),
                 user.getEmail(),
                 user.getPhonenumber(), user.getBirthdate(), user.getRole());
 

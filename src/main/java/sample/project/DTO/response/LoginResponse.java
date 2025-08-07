@@ -1,5 +1,5 @@
 package sample.project.DTO.response;
 
-public record LoginResponse(String statusDesc, String token) {
+public record LoginResponse(Long id, String token) {
 
 }

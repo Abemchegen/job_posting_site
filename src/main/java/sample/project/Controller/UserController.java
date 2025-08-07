@@ -1,7 +1,5 @@
 package sample.project.Controller;
 
-import java.net.URI;
-
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -13,15 +11,16 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
-import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import sample.project.DTO.request.LoginRequest;
 import sample.project.DTO.request.RegisterRequest;
+import sample.project.DTO.response.AgentResponse;
+import sample.project.DTO.response.CompanyResponse;
 import sample.project.DTO.response.LoginResponse;
 import sample.project.DTO.response.RegisterResponse;
 import sample.project.DTO.response.UserResponse;
@@ -37,24 +36,28 @@ public class UserController {
     private final UserService userService;
 
     @PostMapping("/public")
-    @ResponseStatus(HttpStatus.CREATED)
-    public ResponseEntity<RegisterResponse> createUser(@Valid @RequestBody RegisterRequest req) {
-        RegisterResponse response = userService.createUser(req);
+    public ResponseEntity<String> createUser(@Valid @RequestBody RegisterRequest req,
+            HttpServletResponse response) {
+        System.err.println("here");
+        RegisterResponse registerResponse = userService.createUser(req);
 
-        URI url = ServletUriComponentsBuilder.fromCurrentRequest().path("/{id}").buildAndExpand(response.id()).toUri();
+        String cookie = "jwt=" + registerResponse.token()
+                + "; Max-Age=86400; Path=/; HttpOnly; ";
+        response.setHeader("Set-Cookie", cookie);
 
-        return ResponseEntity.created(url).body(response);
+        return ResponseEntity.ok().body("User Created!");
     }
 
     @PostMapping("/public/login")
-    @ResponseStatus(HttpStatus.OK)
-    public ResponseEntity<LoginResponse> login(@RequestBody LoginRequest req) {
-        LoginResponse response = userService.login(req);
-        return ResponseEntity.ok(response);
+    public ResponseEntity<String> login(@RequestBody LoginRequest req, HttpServletResponse response) {
+        LoginResponse loginResponse = userService.login(req);
+        String cookie = "jwt=" + loginResponse.token()
+                + "; Max-Age=86400; Path=/; HttpOnly; ";
+        response.setHeader("Set-Cookie", cookie);
+        return ResponseEntity.ok("Login Successful");
     }
 
     @GetMapping("/{userid}")
-    @ResponseStatus(HttpStatus.OK)
     @PreAuthorize("hasAnyRole('AGENT', 'COMPANY')")
     public ResponseEntity<UserResponse> getUser(@PathVariable long userid, @AuthenticationPrincipal User currentUser) {
 
@@ -65,8 +68,51 @@ public class UserController {
         return ResponseEntity.ok().body(response);
     }
 
+    @GetMapping("/auth/me")
+    public ResponseEntity<UserResponse> getMe(@AuthenticationPrincipal User currentUser) {
+        UserResponse resp;
+
+        if (currentUser == null) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found");
+        }
+        if (currentUser.getRole().toString().equals("AGENT")) {
+            resp = AgentResponse.builder()
+                    .id(currentUser.getId())
+                    .name(currentUser.getName())
+                    .email(currentUser.getEmail())
+                    .phonenumber(currentUser.getPhonenumber())
+                    .birthdate(currentUser.getBirthdate())
+                    .role(currentUser.getRole())
+                    .cv(currentUser.getAgent() != null ? currentUser.getAgent().getCv() : null)
+                    .build();
+        } else if (currentUser.getRole().toString().equals("COMPANY")) {
+            resp = CompanyResponse.builder()
+                    .id(currentUser.getId())
+                    .name(currentUser.getName())
+                    .email(currentUser.getEmail())
+                    .phonenumber(currentUser.getPhonenumber())
+                    .birthdate(currentUser.getBirthdate())
+                    .role(currentUser.getRole())
+                    .companyId(currentUser.getCompany() != null ? currentUser.getCompany().getId() : null)
+                    .companyName(currentUser.getCompany() != null ? currentUser.getCompany().getName() : null)
+                    .companyPhonenumber(
+                            currentUser.getCompany() != null ? currentUser.getCompany().getPhoneNumber() : null)
+                    .build();
+        } else {
+            resp = UserResponse.builder()
+                    .id(currentUser.getId())
+                    .name(currentUser.getName())
+                    .email(currentUser.getEmail())
+                    .phonenumber(currentUser.getPhonenumber())
+                    .birthdate(currentUser.getBirthdate())
+                    .role(currentUser.getRole())
+                    .build();
+        }
+
+        return ResponseEntity.ok().body(resp);
+    }
+
     @GetMapping
-    @ResponseStatus(HttpStatus.OK)
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<UserResponseList> getUsers() {
 
@@ -76,7 +122,6 @@ public class UserController {
     }
 
     @PutMapping("/{userid}")
-    @ResponseStatus(HttpStatus.OK)
     @PreAuthorize("hasAnyRole('AGENT', 'COMPANY')")
     public ResponseEntity<UserResponse> updateUser(@PathVariable long userid, @RequestBody RegisterRequest req,
             @AuthenticationPrincipal User currentUser) {
@@ -89,7 +134,6 @@ public class UserController {
     }
 
     @DeleteMapping("/{userid}")
-    @ResponseStatus(HttpStatus.NO_CONTENT)
     @PreAuthorize("hasAnyRole('AGENT', 'COMPANY')")
     public ResponseEntity<String> deleteUser(@PathVariable long userid, @AuthenticationPrincipal User currentUser) {
 

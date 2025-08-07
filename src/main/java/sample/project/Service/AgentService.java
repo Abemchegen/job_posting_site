@@ -75,7 +75,6 @@ public class AgentService {
                 .email(user.getEmail())
                 .phonenumber(user.getPhonenumber())
                 .name(user.getName())
-                .username(user.getUsername())
                 .role(user.getRole())
                 .cv(cv)
                 .build();
@@ -141,7 +140,6 @@ public class AgentService {
                 .email(user.getEmail())
                 .phonenumber(user.getPhonenumber())
                 .name(user.getName())
-                .username(user.getUsername())
                 .role(user.getRole())
                 .cv(cv)
                 .build();
