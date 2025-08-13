@@ -1,6 +1,7 @@
 package sample.project.Controller;
 
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -24,11 +25,12 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.GetMapping;
 
 @RestController
-@RequestMapping("jobpost")
+@RequestMapping("/jobpost")
 @RequiredArgsConstructor
 public class JobPostController {
 
@@ -41,7 +43,8 @@ public class JobPostController {
 
         Company company = currentUser.getCompany();
         if (!company.getName().equals(req.getCompanyName())) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Access denied");
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN,
+                    "Access denied , you can only create post for your company");
         }
         JobpostResponse jobPost = jobPostService.postJob(req);
 
@@ -56,7 +59,7 @@ public class JobPostController {
         JobpostResponse existingjobPost = jobPostService.getJobPostById(jobpostID);
         Company company = currentUser.getCompany();
 
-        boolean isSameCompany = company.getName().equals(existingjobPost.getCompany().getName());
+        boolean isSameCompany = company.getName().equals(existingjobPost.getCompanyName());
         if (!isSameCompany) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Access denied");
         }
@@ -73,7 +76,7 @@ public class JobPostController {
         JobpostResponse existingjobPost = jobPostService.getJobPostById(jobpostID);
         Company company = currentUser.getCompany();
 
-        boolean isSameCompany = company.getName().equals(existingjobPost.getCompany().getName());
+        boolean isSameCompany = company.getName().equals(existingjobPost.getCompanyName());
         if (!isSameCompany) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Access denied");
         }
@@ -82,14 +85,14 @@ public class JobPostController {
         return ResponseEntity.ok().body("Post deleted Successfully.");
     }
 
-    @GetMapping("/{jobpostID}/jobAplications")
+    @GetMapping("/{jobpostID}/jobApplication")
     @PreAuthorize("hasRole('COMPANY')")
     public ResponseEntity<List<JobApplicationResponse>> getAllJobApplications(@PathVariable Long jobpostID,
             @AuthenticationPrincipal User currentUser) {
         JobpostResponse existingjobPost = jobPostService.getJobPostById(jobpostID);
         Company company = currentUser.getCompany();
 
-        boolean isSameCompany = company.getName().equals(existingjobPost.getCompany().getName());
+        boolean isSameCompany = company.getName().equals(existingjobPost.getCompanyName());
         if (!isSameCompany) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Access denied");
         }
@@ -99,7 +102,7 @@ public class JobPostController {
 
     }
 
-    @GetMapping("/{jobPostID}/jobApplicaiton/{jobApplicationID}")
+    @GetMapping("/{jobPostID}/jobApplication/{jobApplicationID}")
     @PreAuthorize("hasRole('COMPANY')")
     public ResponseEntity<JobApplicationResponse> getJobApplication(@PathVariable Long jobPostID,
             @PathVariable Long jobApplicationID,
@@ -107,7 +110,7 @@ public class JobPostController {
         JobpostResponse existingjobPost = jobPostService.getJobPostById(jobPostID);
         Company company = currentUser.getCompany();
 
-        boolean isSameCompany = company.getName().equals(existingjobPost.getCompany().getName());
+        boolean isSameCompany = company.getName().equals(existingjobPost.getCompanyName());
         if (!isSameCompany) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Access denied");
         }
@@ -117,7 +120,7 @@ public class JobPostController {
 
     }
 
-    @PostMapping("/{jobPostID}/jobApplicaiton/{jobApplicationID}")
+    @PutMapping("/{jobPostID}/jobApplication/{jobApplicationID}")
     @PreAuthorize("hasRole('COMPANY')")
     public ResponseEntity<JobApplicationResponse> updateJobApplicationStatus(@PathVariable Long jobPostID,
             @PathVariable Long jobApplicationID,
@@ -126,7 +129,7 @@ public class JobPostController {
         JobpostResponse existingjobPost = jobPostService.getJobPostById(jobPostID);
         Company company = currentUser.getCompany();
 
-        boolean isSameCompany = company.getName().equals(existingjobPost.getCompany().getName());
+        boolean isSameCompany = company.getName().equals(existingjobPost.getCompanyName());
         if (!isSameCompany) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Access denied");
         }
@@ -136,16 +139,22 @@ public class JobPostController {
 
     }
 
-    @GetMapping
-    public ResponseEntity<List<JobpostResponse>> getAllJobPosts() {
-        List<JobpostResponse> jobPosts = jobPostService.getAllJobPosts();
+    @GetMapping("/company")
+    public ResponseEntity<List<JobpostResponse>> getAllJobPostsCompany(@AuthenticationPrincipal User currentUser,
+            @RequestParam(required = false) Integer salaryMin,
+            @RequestParam(required = false) Integer salaryMax,
+            @RequestParam(required = false) String date,
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) String sort) {
 
+        List<JobpostResponse> jobPosts = jobPostService.getAllJobPostsCompany(currentUser.getCompany().getName(),
+                salaryMin, salaryMax, date, sort, search);
         return ResponseEntity.ok().body(jobPosts);
 
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<JobpostResponse> getJobPostsById(@PathVariable Long id) {
+    public ResponseEntity<JobpostResponse> getJobPostById(@PathVariable Long id) {
         JobpostResponse jobPost = jobPostService.getJobPostById(id);
 
         return ResponseEntity.ok().body(jobPost);

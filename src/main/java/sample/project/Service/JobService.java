@@ -10,8 +10,11 @@ import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import sample.project.DTO.request.CreateJobRequest;
 import sample.project.DTO.request.SubCatagoriesRequest;
-import sample.project.DTO.request.SubCatagoryRequest;
+import sample.project.DTO.request.UpdateSubCatagoryRequest;
+import sample.project.DTO.request.UpdateSubcat;
+import sample.project.DTO.request.Subcat;
 import sample.project.DTO.request.UpdateJobRequest;
+import sample.project.DTO.request.UpdateSubCatagoriesRequest;
 import sample.project.ErrorHandling.Exception.ObjectAlreadyExists;
 import sample.project.ErrorHandling.Exception.ObjectNotFound;
 import sample.project.Model.Job;
@@ -33,16 +36,19 @@ public class JobService {
         Job job = new Job();
         job.setName(request.name());
         job.setDescription(request.description());
+        List<Subcatagory> subcatagories = new ArrayList<Subcatagory>();
 
         if (request.subcatagories() != null) {
-            for (Subcatagory sub : request.subcatagories()) {
-                sub.setJob(job);
+            for (Subcat sub : request.subcatagories()) {
+                Subcatagory subcat = new Subcatagory();
+                subcat.setName(sub.name());
+                subcat.setDescription(sub.description());
+                subcat.setJob(job);
+                subcatagories.add(subcat);
             }
-            job.setSubcatagory(request.subcatagories());
-        } else {
-            job.setSubcatagory(new ArrayList<>());
-        }
 
+        }
+        job.setSubcatagory(subcatagories);
         return jobRepo.save(job);
 
     }
@@ -58,17 +64,20 @@ public class JobService {
         Job job = optionalJob.get();
         List<Subcatagory> subcatagories = job.getSubcatagory();
 
-        for (Subcatagory newSubcat : request.subcatagories()) {
+        for (Subcat newSubcat : request.subcatagories()) {
             boolean exists = false;
             for (Subcatagory existing : subcatagories) {
-                if (existing.getName().equalsIgnoreCase(newSubcat.getName())) {
+                if (existing.getName().equalsIgnoreCase(newSubcat.name())) {
                     exists = true;
                     break;
                 }
             }
             if (!exists) {
-                newSubcat.setJob(job);
-                subcatagories.add(newSubcat);
+                Subcatagory sub = new Subcatagory();
+                sub.setName(newSubcat.name());
+                sub.setDescription(newSubcat.description());
+                sub.setJob(job);
+                subcatagories.add(sub);
             }
         }
         return job;
@@ -86,10 +95,10 @@ public class JobService {
         Job job = optionalJob.get();
         List<Subcatagory> subcatagories = job.getSubcatagory();
 
-        for (Subcatagory subcat : request.subcatagories()) {
+        for (Subcat subcat : request.subcatagories()) {
             Subcatagory sub = null;
             for (Subcatagory existing : subcatagories) {
-                if (existing.getName().equalsIgnoreCase(subcat.getName())) {
+                if (existing.getName().equalsIgnoreCase(subcat.name())) {
                     sub = existing;
                     break;
                 }
@@ -104,7 +113,7 @@ public class JobService {
     }
 
     @Transactional
-    public Job updateSubCatagories(SubCatagoriesRequest request) {
+    public Job updateSubCatagories(UpdateSubCatagoriesRequest request) {
 
         Optional<Job> optionalJob = jobRepo.findByName(request.jobName());
         if (!optionalJob.isPresent()) {
@@ -114,16 +123,25 @@ public class JobService {
         Job job = optionalJob.get();
         List<Subcatagory> subcatagories = job.getSubcatagory();
 
-        for (Subcatagory newSubcat : request.subcatagories()) {
+        for (UpdateSubcat newSubcat : request.subcatagories()) {
             Subcatagory sub = null;
             for (Subcatagory existing : subcatagories) {
-                if (existing.getName().equalsIgnoreCase(newSubcat.getName())) {
+                if (existing.getName().equalsIgnoreCase(newSubcat.existingName())) {
                     sub = existing;
                     break;
                 }
             }
             if (sub != null) {
-                sub.setDescription(newSubcat.getDescription());
+                if (!sub.getName().equals(newSubcat.updatedName())) {
+                    boolean nameExists = subcatagories.stream()
+                            .anyMatch(s -> s.getName().equalsIgnoreCase(newSubcat.updatedName()));
+                    if (nameExists) {
+                        throw new ObjectAlreadyExists("Subcatagory", "name");
+                    }
+                }
+
+                sub.setName(newSubcat.updatedName());
+                sub.setDescription(newSubcat.description());
             }
         }
         job.setSubcatagory(subcatagories);
@@ -132,7 +150,7 @@ public class JobService {
     }
 
     @Transactional
-    public Job updateSubCatagory(SubCatagoryRequest request) {
+    public Job updateSubCatagory(UpdateSubCatagoryRequest request) {
         Optional<Job> optionalJob = jobRepo.findByName(request.jobName());
         if (!optionalJob.isPresent()) {
             throw new ObjectNotFound("Job", "name");
@@ -140,11 +158,20 @@ public class JobService {
 
         Job job = optionalJob.get();
         List<Subcatagory> subcatagories = job.getSubcatagory();
-        Subcatagory newSubcat = request.subcatagory();
+        UpdateSubcat newSubcat = request.subcatagory();
 
         for (Subcatagory existing : subcatagories) {
-            if (existing.getName().equalsIgnoreCase(newSubcat.getName())) {
-                existing.setDescription(newSubcat.getDescription());
+            if (existing.getName().equalsIgnoreCase(newSubcat.existingName())) {
+
+                if (!existing.getName().equals(newSubcat.updatedName())) {
+                    boolean nameExists = subcatagories.stream()
+                            .anyMatch(s -> s.getName().equalsIgnoreCase(newSubcat.updatedName()));
+                    if (nameExists) {
+                        throw new ObjectAlreadyExists("Subcatagory", "name");
+                    }
+                    existing.setName(newSubcat.updatedName());
+                }
+                existing.setDescription(newSubcat.description());
                 break;
             }
         }
@@ -156,11 +183,11 @@ public class JobService {
     @Transactional
     public Job updateJobDetails(UpdateJobRequest request) {
         Optional<Job> optionalJob = jobRepo.findByName(request.existingJobname());
-        if (!optionalJob.isPresent()) {
+        if (!optionalJob.isPresent() && request.existingJobname().equals(request.updatedJobName())) {
             throw new ObjectNotFound("Job", "name");
         }
 
-        if (request.updatedJobName() != null) {
+        if (request.updatedJobName() != null && !request.existingJobname().equals(request.updatedJobName())) {
             Optional<Job> optionalUpdatedJob = jobRepo.findByName(request.updatedJobName());
             if (optionalUpdatedJob.isPresent()) {
                 throw new ObjectAlreadyExists("Job", "name");
@@ -181,8 +208,16 @@ public class JobService {
 
     }
 
-    public List<Job> getAllJob() {
-        return jobRepo.findAll();
+    public List<Job> getAllJob(String search) {
+
+        List<Job> jobs = jobRepo.findAll();
+        if (search != null) {
+            System.out.println(search);
+            jobs.removeIf(job -> !(job.getName().toLowerCase().contains(search.toLowerCase()) ||
+                    job.getDescription().toLowerCase().contains(search.toLowerCase())));
+
+        }
+        return jobs;
     }
 
     public Job getJobById(Long id) {

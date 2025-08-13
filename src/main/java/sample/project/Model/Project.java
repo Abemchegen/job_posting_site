@@ -19,9 +19,9 @@ public class Project {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private long id;
-    private String projectName;
-    private String projectDescription;
-    private String projectUrl;
+    private String name;
+    private String description;
+    private String url;
     @ManyToOne
     @JsonBackReference("resume-project")
     private Resume resume;

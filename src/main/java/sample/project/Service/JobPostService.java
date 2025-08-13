@@ -1,12 +1,10 @@
 package sample.project.Service;
 
+import java.time.LocalDate;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
-
 import org.springframework.stereotype.Service;
-
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import sample.project.DTO.request.JobApplicationUpdateRequest;
@@ -16,7 +14,6 @@ import sample.project.DTO.response.JobApplicationResponse;
 import sample.project.DTO.response.JobpostResponse;
 import sample.project.DTO.response.UserResponse;
 import sample.project.ErrorHandling.Exception.ObjectNotFound;
-import sample.project.ErrorHandling.Exception.RequiredFieldsEmpty;
 import sample.project.Model.Agent;
 import sample.project.Model.Company;
 import sample.project.Model.Job;
@@ -24,6 +21,7 @@ import sample.project.Model.JobApplication;
 import sample.project.Model.JobPost;
 import sample.project.Model.Subcatagory;
 import sample.project.Model.User;
+import sample.project.Repo.JobApplicationRepo;
 import sample.project.Repo.JobPostRepo;
 
 @Service
@@ -41,15 +39,12 @@ public class JobPostService {
         }
 
         Optional<Job> optionalJob = jobService.getJob(req.getJobName());
+        System.err.println(req.getJobName());
         if (!optionalJob.isPresent()) {
             throw new ObjectNotFound("Job", "name");
         }
         Job job = optionalJob.get();
         Subcatagory subcatagory = null;
-        if (req.getSubcatagoryName() == null && (job.getSubcatagory() != null && !job.getSubcatagory().isEmpty())) {
-            throw new RequiredFieldsEmpty("Job post", Collections.singletonList("Job subcatagory"));
-
-        }
 
         if (req.getSubcatagoryName() != null) {
             List<Subcatagory> subcatagories = job.getSubcatagory();
@@ -60,9 +55,7 @@ public class JobPostService {
                     break;
                 }
             }
-            if (subcatagory == null) {
-                throw new ObjectNotFound("subcatagory", "name");
-            }
+
         }
 
         JobPost jobPost = new JobPost();
@@ -70,14 +63,23 @@ public class JobPostService {
         jobPost.setPeopleNeeded(req.getPeopleNeeded());
         jobPost.setSalary(req.getSalary());
         jobPost.setJobName(req.getJobName());
+        jobPost.setDate(LocalDate.now());
         jobPost.setSubcatagory(subcatagory);
         jobPost.setCompany(optionalCompany.get());
 
         JobPost post = jobPostRepo.save(jobPost);
 
-        return new JobpostResponse(post.getId(), post.getDescription(), post.getCompany(), post.getJobName(),
-                post.getSubcatagory(),
-                post.getPeopleNeeded(), post.getSalary());
+        JobpostResponse res = new JobpostResponse(post.getId(), post.getDescription(), post.getCompany().getName(),
+                post.getCompany().getPhoneNumber(), post.getJobName(),
+                null, null,
+                post.getPeopleNeeded(), post.getSalary(), jobPost.getDate());
+
+        if (post.getSubcatagory() != null) {
+            res.setSubcatName(post.getSubcatagory().getName());
+            res.setSubcatDesc(post.getSubcatagory().getDescription());
+        }
+
+        return res;
 
     }
 
@@ -122,9 +124,18 @@ public class JobPostService {
 
         }
 
-        return new JobpostResponse(jobPost.getId(), jobPost.getDescription(), jobPost.getCompany(),
-                jobPost.getJobName(), jobPost.getSubcatagory(), jobPost.getPeopleNeeded(), jobPost.getSalary());
+        JobpostResponse response = new JobpostResponse(jobPost.getId(), jobPost.getDescription(),
+                jobPost.getCompany().getName(),
+                jobPost.getCompany().getPhoneNumber(),
+                jobPost.getJobName(), null, null,
+                jobPost.getPeopleNeeded(), jobPost.getSalary(),
+                jobPost.getDate());
 
+        if (jobPost.getSubcatagory() != null) {
+            response.setSubcatName(jobPost.getSubcatagory().getName());
+            response.setSubcatDesc(jobPost.getSubcatagory().getDescription());
+        }
+        return response;
     }
 
     public void deleteJobPost(Long id) {
@@ -136,19 +147,6 @@ public class JobPostService {
         jobPostRepo.deleteById(id);
     }
 
-    public List<JobpostResponse> getAllJobPosts() {
-        List<JobPost> posts = jobPostRepo.findAll();
-        List<JobpostResponse> responses = new ArrayList<JobpostResponse>();
-
-        for (JobPost post : posts) {
-            JobpostResponse response = new JobpostResponse(post.getId(), post.getDescription(), post.getCompany(),
-                    post.getJobName(), post.getSubcatagory(), post.getPeopleNeeded(), post.getSalary());
-            responses.add(response);
-        }
-
-        return responses;
-    }
-
     public JobpostResponse getJobPostById(Long id) {
         Optional<JobPost> optionalJobPost = jobPostRepo.findById(id);
         if (!optionalJobPost.isPresent()) {
@@ -157,8 +155,17 @@ public class JobPostService {
 
         JobPost post = optionalJobPost.get();
 
-        return new JobpostResponse(post.getId(), post.getDescription(), post.getCompany(), post.getJobName(),
-                post.getSubcatagory(), post.getPeopleNeeded(), post.getSalary());
+        JobpostResponse res = new JobpostResponse(post.getId(), post.getDescription(), post.getCompany().getName(),
+                post.getCompany().getPhoneNumber(), post.getJobName(),
+                null, null, post.getPeopleNeeded(),
+                post.getSalary(), post.getDate());
+
+        if (post.getSubcatagory() != null) {
+            res.setSubcatName(post.getSubcatagory().getName());
+            res.setSubcatDesc(post.getSubcatagory().getDescription());
+        }
+
+        return res;
     }
 
     public JobPost getJobPostObjectById(Long id) {
@@ -185,13 +192,15 @@ public class JobPostService {
             User user = agent.getUser();
             UserResponse userInfo = new UserResponse(user.getId(), user.getName(),
                     user.getEmail(),
-                    user.getPhonenumber(), user.getBirthdate(), user.getRole());
+                    user.getPhonenumber(), user.getBirthdate(), user.getRole(), user.getPfpUrl());
 
             JobApplicationResponse response = new JobApplicationResponse(app.getId(), userInfo,
                     agent.getCv(),
                     app.getJobPost().getId(),
                     app.getAppliedAt(), app.getCoverLetter(),
-                    String.valueOf(app.getStatus()));
+                    String.valueOf(app.getStatus()), app.getCvURL(), app.getJobPost().getJobName(),
+                    app.getJobPost().getSubcatagory().getName(),
+                    app.getJobPost().getCompany().getName());
             responses.add(response);
         }
         return responses;
@@ -219,13 +228,15 @@ public class JobPostService {
         User user = agent.getUser();
         UserResponse userInfo = new UserResponse(user.getId(), user.getName(),
                 user.getEmail(),
-                user.getPhonenumber(), user.getBirthdate(), user.getRole());
+                user.getPhonenumber(), user.getBirthdate(), user.getRole(), user.getPfpUrl());
 
         return new JobApplicationResponse(app.getId(), userInfo,
                 agent.getCv(),
                 app.getJobPost().getId(),
                 app.getAppliedAt(), app.getCoverLetter(),
-                String.valueOf(app.getStatus()));
+                String.valueOf(app.getStatus()), app.getCvURL(), app.getJobPost().getJobName(),
+                app.getJobPost().getSubcatagory().getName(),
+                app.getJobPost().getCompany().getName());
     }
 
     private JobApplication getJobApplicationObject(Long jobPostID, Long jobApplicationID) {
@@ -243,6 +254,86 @@ public class JobPostService {
         }
 
         throw new ObjectNotFound("Job Application", "id");
+    }
+
+    public List<JobpostResponse> getAllJobPostsCompany(String name, Integer salaryMin, Integer salaryMax, String date,
+            String sort, String search) {
+        Optional<Company> optionalCompany = companyService.getCompany(name);
+        if (!optionalCompany.isPresent()) {
+            throw new ObjectNotFound("Company", "name");
+        }
+
+        Company company = optionalCompany.get();
+        Optional<List<JobPost>> optionalResponses = jobPostRepo.findByCompany(company);
+
+        if (!optionalResponses.isPresent()) {
+            return new ArrayList<JobpostResponse>();
+        }
+        List<JobPost> posts = optionalResponses.get();
+
+        if (search != null) {
+            System.out.println(search);
+            posts.removeIf(post -> !(post.getJobName().toLowerCase().contains(search.toLowerCase()) ||
+                    post.getSubcatagory().getName().toLowerCase().contains(search.toLowerCase())));
+        }
+        if (salaryMin != null && salaryMax != null) {
+            System.out.println("salary");
+            posts.removeIf(post -> !(post.getSalary() < salaryMin || post.getSalary() > salaryMax));
+        }
+
+        if (date != null) {
+            System.out.println(date);
+            LocalDate now = LocalDate.now();
+            switch (date) {
+                case "Past 24 hours":
+                    posts.removeIf(post -> post.getDate().isBefore(now.minusDays(1)));
+                    System.out.println("AS");
+
+                    break;
+                case "Past Week":
+                    posts.removeIf(post -> post.getDate().isBefore(now.minusWeeks(1)));
+                    System.out.println("jk");
+
+                    break;
+                case "Past Month":
+                    posts.removeIf(post -> post.getDate().isBefore(now.minusMonths(1)));
+                    System.out.println("hjh");
+                    break;
+            }
+        }
+
+        if ("Latest Posts".equalsIgnoreCase(sort)) {
+            System.out.println(sort + "ghh");
+            posts.sort(java.util.Comparator.comparing(JobPost::getDate).reversed());
+        } else if ("Highest Salary".equalsIgnoreCase(sort)) {
+            System.out.println(sort);
+
+            posts.sort(java.util.Comparator.comparing(JobPost::getSalary).reversed());
+        }
+
+        List<JobpostResponse> response = new ArrayList<>();
+
+        for (JobPost post : posts) {
+            JobpostResponse res = new JobpostResponse(post.getId(), post.getDescription(), post.getCompany().getName(),
+                    post.getCompany().getPhoneNumber(),
+                    post.getJobName(), null, null,
+                    post.getPeopleNeeded(), post.getSalary(), post.getDate());
+            if (post.getSubcatagory() != null) {
+                res.setSubcatName(post.getSubcatagory().getName());
+                res.setSubcatDesc(post.getSubcatagory().getDescription());
+            }
+
+            response.add(res);
+        }
+        return response;
+    }
+
+    public List<JobPost> getAllJobpostObjects() {
+        return jobPostRepo.findAll();
+    }
+
+    public JobPost getJobpostObject(long id) {
+        return jobPostRepo.findById(id).get();
     }
 
 }

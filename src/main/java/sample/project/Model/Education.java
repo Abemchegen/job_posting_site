@@ -19,8 +19,8 @@ public class Education {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private long id;
-    private EducationLevel educationLevel;
-    private String educationInstitution;
+    private EducationLevel level;
+    private String institution;
     private float gpa;
     @ManyToOne
     @JsonBackReference("resume-education")

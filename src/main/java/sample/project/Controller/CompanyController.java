@@ -16,17 +16,17 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 
 @RestController
-@RequestMapping("company")
+@RequestMapping("/company")
 @RequiredArgsConstructor
 public class CompanyController {
 
     private final CompanyService companyService;
 
-    @PostMapping("/updateDetails")
+    @PutMapping("/updateDetails")
     @PreAuthorize("hasRole('COMPANY')")
     public ResponseEntity<CompanyUpdateResponse> changeCompanyDetails(@RequestBody CompanyUpdateRequest req,
             @AuthenticationPrincipal User currentUser) {

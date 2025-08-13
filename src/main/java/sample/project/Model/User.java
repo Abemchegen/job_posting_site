@@ -58,6 +58,7 @@ public class User implements UserDetails {
     @Enumerated(EnumType.STRING)
     private Role role;
 
+    private String pfpUrl;
     @ManyToOne
     @JsonBackReference("company-user")
     private Company company;

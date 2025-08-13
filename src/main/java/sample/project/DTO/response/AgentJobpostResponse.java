@@ -8,7 +8,7 @@ import lombok.NoArgsConstructor;
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-public class JobpostResponse {
+public class AgentJobpostResponse {
     private long id;
     private String description;
     private String companyName;
@@ -19,4 +19,6 @@ public class JobpostResponse {
     private int peopleNeeded;
     private long salary;
     private LocalDate date;
+    private boolean applied;
+    private long applicationid;
 }

@@ -19,8 +19,9 @@ public class Award {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private long id;
-    private String awardDescription;
-    private String awardUri;
+    private String name;
+    private String description;
+    private String url;
     @ManyToOne
     @JsonBackReference("resume-award")
     private Resume resume;

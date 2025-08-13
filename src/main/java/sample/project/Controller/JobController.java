@@ -1,14 +1,16 @@
 package sample.project.Controller;
 
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import sample.project.DTO.request.CreateJobRequest;
 import sample.project.DTO.request.SubCatagoriesRequest;
-import sample.project.DTO.request.SubCatagoryRequest;
+import sample.project.DTO.request.UpdateSubCatagoryRequest;
 import sample.project.DTO.request.UpdateJobRequest;
+import sample.project.DTO.request.UpdateSubCatagoriesRequest;
 import sample.project.Model.Job;
 import sample.project.Service.JobService;
 
@@ -23,21 +25,21 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 
 @RestController
-@RequestMapping("job")
+@RequestMapping("/job")
 @RequiredArgsConstructor
 public class JobController {
 
     private final JobService adminService;
 
     @PostMapping("/addJob")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'COMPANY')")
     public ResponseEntity<Job> addJob(@Valid @RequestBody CreateJobRequest request) {
         Job job = adminService.addJob(request);
         return ResponseEntity.ok().body(job);
     }
 
     @PostMapping("/addSubcatagories")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'COMPANY')")
     public ResponseEntity<Job> addSubCatagories(@Valid @RequestBody SubCatagoriesRequest request) {
         Job job = adminService.addSubCatagories(request);
         return ResponseEntity.ok().body(job);
@@ -52,14 +54,14 @@ public class JobController {
 
     @PostMapping("/updateSubcatagories")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<Job> updateSubCatagories(@Valid @RequestBody SubCatagoriesRequest request) {
+    public ResponseEntity<Job> updateSubCatagories(@Valid @RequestBody UpdateSubCatagoriesRequest request) {
         Job job = adminService.updateSubCatagories(request);
         return ResponseEntity.ok().body(job);
     }
 
     @PostMapping("/updateSubcatagory")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<Job> updateSubCatagory(@Valid @RequestBody SubCatagoryRequest request) {
+    public ResponseEntity<Job> updateSubCatagory(@Valid @RequestBody UpdateSubCatagoryRequest request) {
         Job job = adminService.updateSubCatagory(request);
         return ResponseEntity.ok().body(job);
     }
@@ -79,9 +81,9 @@ public class JobController {
     }
 
     @GetMapping
-    @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<List<Job>> getAllJob() {
-        List<Job> jobs = adminService.getAllJob();
+    @PreAuthorize("hasAnyRole('COMPANY', 'ADMIN')")
+    public ResponseEntity<List<Job>> getAllJob(@RequestParam(required = false) String search) {
+        List<Job> jobs = adminService.getAllJob(search);
         return ResponseEntity.ok().body(jobs);
     }
 

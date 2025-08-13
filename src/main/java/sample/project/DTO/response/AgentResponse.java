@@ -1,12 +1,12 @@
 
 package sample.project.DTO.response;
 
-import sample.project.Model.Cv;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
+import sample.project.Model.Cv;
 
 @Data
 @EqualsAndHashCode(callSuper = true)

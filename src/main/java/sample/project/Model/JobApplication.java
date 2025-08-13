@@ -30,8 +30,10 @@ public class JobApplication {
     @JsonBackReference("jobpost-jobapplication")
     private JobPost jobPost;
     private LocalDate appliedAt;
+    @jakarta.persistence.Column(columnDefinition = "TEXT")
     private String coverLetter;
     @Enumerated(EnumType.STRING)
     private Status status;
+    private String cvURL;
 
 }

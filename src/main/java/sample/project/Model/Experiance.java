@@ -19,9 +19,9 @@ public class Experiance {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private long id;
-    private String experianceName;
-    private String experianceDescription;
-    private int experianceYear;
+    private String name;
+    private String description;
+    private int year;
     @ManyToOne
     @JsonBackReference("resume-experiance")
     private Resume resume;

@@ -4,6 +4,6 @@ import java.util.List;
 
 import jakarta.validation.constraints.NotEmpty;
 
-public record SubCatagoriesRequest(@NotEmpty List<Subcat> subcatagories, @NotEmpty String jobName) {
+public record UpdateSubCatagoriesRequest(@NotEmpty List<UpdateSubcat> subcatagories, @NotEmpty String jobName) {
 
 }

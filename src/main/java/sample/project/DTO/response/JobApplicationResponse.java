@@ -7,5 +7,6 @@ import sample.project.Model.Cv;
 
 public record JobApplicationResponse(long jobApplicationID, UserResponse userInfo, Cv cv, long jobPostID,
                 LocalDate appliedAt,
-                String coverLetter, String status) {
+                String coverLetter, String status, String cvURL, String jobName, String subcatName,
+                String CompanyName) {
 }

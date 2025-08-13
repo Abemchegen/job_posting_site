@@ -41,22 +41,23 @@ public class CompanyService {
 
     @Transactional
     public CompanyUpdateResponse changeCompanyDetails(CompanyUpdateRequest req, long companyID) {
-        Optional<Company> optionalCompanyName = companyRepo.findByName(req.name());
-
-        if (optionalCompanyName.isPresent()) {
-            throw new ObjectAlreadyExists("Company", "name");
-        }
-        Optional<Company> optionalCompanyPhonenum = companyRepo.findByPhoneNumber(req.phonenumber());
-
-        if (optionalCompanyPhonenum.isPresent()) {
-            throw new ObjectAlreadyExists("Company", "phonenumber");
-        }
-
         Optional<Company> optionalCompany = companyRepo.findById(companyID);
         if (!optionalCompany.isPresent()) {
             throw new ObjectNotFound("Company", "id");
         }
         Company company = optionalCompany.get();
+        Optional<Company> optionalCompanyName = companyRepo.findByName(req.name());
+
+        if (optionalCompanyName.isPresent() && !optionalCompanyName.get().getName().equals(company.getName())) {
+            throw new ObjectAlreadyExists("Company", "name");
+        }
+        Optional<Company> optionalCompanyPhonenum = companyRepo.findByPhoneNumber(req.phonenumber());
+
+        if (optionalCompanyPhonenum.isPresent()
+                && !optionalCompanyPhonenum.get().getPhoneNumber().equals(company.getPhoneNumber())) {
+            throw new ObjectAlreadyExists("Company", "phonenumber");
+        }
+
         if (req.name() != null) {
             company.setName(req.name());
 
@@ -88,8 +89,10 @@ public class CompanyService {
         List<JobPost> post = company.get().getJobPosts();
         List<JobpostResponse> responses = new ArrayList<JobpostResponse>();
         for (JobPost p : post) {
-            JobpostResponse response = new JobpostResponse(p.getId(), p.getDescription(), p.getCompany(),
-                    p.getJobName(), p.getSubcatagory(), p.getPeopleNeeded(), p.getSalary());
+            JobpostResponse response = new JobpostResponse(p.getId(), p.getDescription(), p.getCompany().getName(),
+                    p.getCompany().getPhoneNumber(),
+                    p.getJobName(), p.getSubcatagory().getName(), p.getSubcatagory().getDescription(),
+                    p.getPeopleNeeded(), p.getSalary(), p.getDate());
 
             responses.add(response);
         }

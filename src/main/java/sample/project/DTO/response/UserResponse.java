@@ -20,5 +20,6 @@ public class UserResponse {
     private String phonenumber;
     private LocalDate birthdate;
     private Role role;
+    private String pfp;
 
 }

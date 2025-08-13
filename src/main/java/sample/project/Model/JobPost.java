@@ -1,5 +1,6 @@
 package sample.project.Model;
 
+import java.time.LocalDate;
 import java.util.List;
 
 import com.fasterxml.jackson.annotation.JsonBackReference;
@@ -27,6 +28,7 @@ public class JobPost {
     @ManyToOne
     @JsonBackReference("jobpost-company")
     private Company company;
+    @jakarta.persistence.Column(length = 10000)
     private String description;
     private String jobName;
     @ManyToOne
@@ -34,6 +36,7 @@ public class JobPost {
     private Subcatagory subcatagory;
     private int peopleNeeded;
     private long salary;
+    private LocalDate date;
     @JsonManagedReference("jobpost-jobapplication")
     @OneToMany(mappedBy = "jobPost", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<JobApplication> JobApplications;
