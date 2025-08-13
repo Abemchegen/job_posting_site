@@ -47,6 +47,8 @@ public class AgentService {
             throw new ObjectNotFound("User", "id");
         }
 
+        // Ensure all lists are initialized
+
         Agent agent = optionalAgent.get();
         Cv cv = agent.getCv();
         if (cv == null) {

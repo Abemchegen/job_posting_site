@@ -75,6 +75,7 @@ public class JobApplicationService {
         UserResponse userInfo = new UserResponse(user.getId(), user.getName(), user.getEmail(),
                 user.getPhonenumber(), user.getBirthdate(), user.getRole(), user.getPfpUrl());
 
+<<<<<<< HEAD
         JobApplicationResponse res = new JobApplicationResponse(app.getId(), userInfo, agent.get().getCv(),
                 app.getJobPost().getId(),
                 app.getAppliedAt(), app.getCoverLetter(), String.valueOf(app.getStatus()), app.getCvURL(),
@@ -85,6 +86,11 @@ public class JobApplicationService {
         }
 
         return res;
+=======
+        return new JobApplicationResponse(app.getId(), userInfo, agent.get().getCv(), app.getJobPost().getId(),
+                app.getAppliedAt(), app.getCoverLetter(), String.valueOf(app.getStatus()), app.getCvURL(),
+                jobPost.getJobName(), jobPost.getSubcatagory().getName(), jobPost.getCompany().getName());
+>>>>>>> 837cf3d (debugging from integration, fixed many dto errors, added url search params)
     }
 
     public void delete(Long jobApplicationID) {
@@ -115,6 +121,7 @@ public class JobApplicationService {
         User user = agent.getUser();
         UserResponse userInfo = new UserResponse(user.getId(), user.getName(), user.getEmail(),
                 user.getPhonenumber(), user.getBirthdate(), user.getRole(), user.getPfpUrl());
+<<<<<<< HEAD
 
         JobApplicationResponse res = new JobApplicationResponse(app.getId(), userInfo, agent.getCv(),
                 app.getJobPost().getId(),
@@ -127,6 +134,13 @@ public class JobApplicationService {
         }
         return res;
 
+=======
+
+        return new JobApplicationResponse(app.getId(), userInfo, agent.getCv(), app.getJobPost().getId(),
+                app.getAppliedAt(), app.getCoverLetter(), String.valueOf(app.getStatus()), app.getCvURL(),
+                app.getJobPost().getJobName(), app.getJobPost().getSubcatagory().getName(),
+                app.getJobPost().getCompany().getName());
+>>>>>>> 837cf3d (debugging from integration, fixed many dto errors, added url search params)
     }
 
     public List<JobApplicationResponse> findAllApplications(
@@ -143,13 +157,21 @@ public class JobApplicationService {
             System.out.println(search);
             applications.removeIf(app -> !(app.getJobPost().getJobName().toLowerCase().contains(search.toLowerCase()) ||
                     app.getJobPost().getCompany().getName().toLowerCase().contains(search.toLowerCase()) ||
+<<<<<<< HEAD
                     (app.getJobPost().getSubcatagory() != null && app.getJobPost().getSubcatagory().getName()
                             .toLowerCase().contains(search.toLowerCase()))));
+=======
+                    app.getJobPost().getSubcatagory().getName().toLowerCase().contains(search.toLowerCase())));
+>>>>>>> 837cf3d (debugging from integration, fixed many dto errors, added url search params)
         }
         if (salaryMin != null && salaryMax != null) {
             System.out.println("salary");
             applications.removeIf(
+<<<<<<< HEAD
                     app -> (app.getJobPost().getSalary() < salaryMin || app.getJobPost().getSalary() > salaryMax));
+=======
+                    app -> !(app.getJobPost().getSalary() < salaryMin || app.getJobPost().getSalary() > salaryMax));
+>>>>>>> 837cf3d (debugging from integration, fixed many dto errors, added url search params)
         }
         if (status != null) {
             System.out.println("status");
@@ -198,6 +220,7 @@ public class JobApplicationService {
                 UserResponse userInfo = new UserResponse(user.getId(), user.getName(),
                         user.getEmail(),
                         user.getPhonenumber(), user.getBirthdate(), user.getRole(), user.getPfpUrl());
+<<<<<<< HEAD
                 JobApplicationResponse res = new JobApplicationResponse(app.getId(), userInfo, agent.getCv(),
                         app.getJobPost().getId(),
                         app.getAppliedAt(), app.getCoverLetter(), String.valueOf(app.getStatus()), app.getCvURL(),
@@ -210,6 +233,12 @@ public class JobApplicationService {
                 }
                 response.add(res);
 
+=======
+                response.add(new JobApplicationResponse(app.getId(), userInfo, agent.getCv(), app.getJobPost().getId(),
+                        app.getAppliedAt(), app.getCoverLetter(), String.valueOf(app.getStatus()), app.getCvURL(),
+                        app.getJobPost().getJobName(), app.getJobPost().getSubcatagory().getName(),
+                        app.getJobPost().getCompany().getName()));
+>>>>>>> 837cf3d (debugging from integration, fixed many dto errors, added url search params)
             }
 
         }
@@ -241,6 +270,7 @@ public class JobApplicationService {
                 jobApplication.getJobPost().getId(),
                 jobApplication.getAppliedAt(), jobApplication.getCoverLetter(),
                 String.valueOf(jobApplication.getStatus()), jobApplication.getCvURL(),
+<<<<<<< HEAD
                 jobApplication.getJobPost().getJobName(), null,
                 jobApplication.getJobPost().getCompany().getName());
 
@@ -249,6 +279,10 @@ public class JobApplicationService {
         }
 
         return res;
+=======
+                jobApplication.getJobPost().getJobName(), jobApplication.getJobPost().getSubcatagory().getName(),
+                jobApplication.getJobPost().getCompany().getName());
+>>>>>>> 837cf3d (debugging from integration, fixed many dto errors, added url search params)
     }
 
     public List<AgentJobpostResponse> getJobposts(Integer salaryMin, Integer salaryMax,
@@ -262,12 +296,20 @@ public class JobApplicationService {
             System.out.println(search);
             posts.removeIf(post -> !(post.getJobName().toLowerCase().contains(search.toLowerCase()) ||
                     post.getCompany().getName().toLowerCase().contains(search.toLowerCase()) ||
+<<<<<<< HEAD
                     ((post.getSubcatagory() != null)
                             && post.getSubcatagory().getName().toLowerCase().contains(search.toLowerCase()))));
         }
         if (salaryMin != null && salaryMax != null) {
             System.out.println("salary");
             posts.removeIf(post -> (post.getSalary() < salaryMin || post.getSalary() > salaryMax));
+=======
+                    post.getSubcatagory().getName().toLowerCase().contains(search.toLowerCase())));
+        }
+        if (salaryMin != null && salaryMax != null) {
+            System.out.println("salary");
+            posts.removeIf(post -> !(post.getSalary() < salaryMin || post.getSalary() > salaryMax));
+>>>>>>> 837cf3d (debugging from integration, fixed many dto errors, added url search params)
         }
 
         if (date != null) {
@@ -342,7 +384,10 @@ public class JobApplicationService {
                 responses.add(response);
             }
         }
+<<<<<<< HEAD
 
+=======
+>>>>>>> 837cf3d (debugging from integration, fixed many dto errors, added url search params)
         return responses;
 
     }

@@ -34,6 +34,7 @@ public class CloudinaryService {
 
     @SuppressWarnings("unchecked")
     public String uploadFile(MultipartFile file, boolean image) throws IOException {
+<<<<<<< HEAD
         Map<String, Object> options;
 
         if (image) {
@@ -117,4 +118,48 @@ public class CloudinaryService {
         return afterUpload;
     }
 
+=======
+        Map<String, Object> uploadResult = (Map<String, Object>) cloudinary.uploader().upload(file.getBytes(),
+                ObjectUtils.emptyMap());
+        String url = (String) uploadResult.get("secure_url");
+        if (image) {
+            String publicId = split(url);
+            return publicId;
+
+        }
+        return url;
+
+    }
+
+    public void deleteFile(String publicID) {
+
+        try {
+            cloudinary.uploader().destroy(publicID, ObjectUtils.emptyMap());
+        } catch (Exception e) {
+            // Optionally log the error, but don't throw to avoid breaking user update
+        }
+    }
+
+    private String split(String url) {
+        // https://res.cloudinary.com/<cloud_name>/image/upload/v<version>/<public_id>.<ext>
+        String[] parts = url.split("/image/upload/");
+        if (parts.length < 2) {
+            return null;
+        }
+        String afterUpload = parts[1];
+        // Remove version if present
+        int slashIdx = afterUpload.indexOf('/');
+        if (slashIdx >= 0) {
+            afterUpload = afterUpload.substring(slashIdx + 1);
+        }
+        // Remove extension
+        int dotIdx = afterUpload.lastIndexOf('.');
+
+        if (dotIdx > 0) {
+            afterUpload = afterUpload.substring(0, dotIdx);
+        }
+        System.out.println("parts:" + parts + "afterupload:" + afterUpload + "dotidx" + dotIdx);
+        return afterUpload;
+    }
+>>>>>>> 837cf3d (debugging from integration, fixed many dto errors, added url search params)
 }

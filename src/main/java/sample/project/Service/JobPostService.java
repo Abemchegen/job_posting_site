@@ -21,6 +21,7 @@ import sample.project.Model.JobApplication;
 import sample.project.Model.JobPost;
 import sample.project.Model.Subcatagory;
 import sample.project.Model.User;
+import sample.project.Repo.JobApplicationRepo;
 import sample.project.Repo.JobPostRepo;
 
 @Service
@@ -247,6 +248,7 @@ public class JobPostService {
                 app.getJobPost().getId(),
                 app.getAppliedAt(), app.getCoverLetter(),
                 String.valueOf(app.getStatus()), app.getCvURL(), app.getJobPost().getJobName(),
+<<<<<<< HEAD
                 null,
                 app.getJobPost().getCompany().getName());
 
@@ -256,6 +258,10 @@ public class JobPostService {
 
         return res;
 
+=======
+                app.getJobPost().getSubcatagory().getName(),
+                app.getJobPost().getCompany().getName());
+>>>>>>> 837cf3d (debugging from integration, fixed many dto errors, added url search params)
     }
 
     private JobApplication getJobApplicationObject(Long jobPostID, Long jobApplicationID) {
@@ -293,12 +299,20 @@ public class JobPostService {
         if (search != null) {
             System.out.println(search);
             posts.removeIf(post -> !(post.getJobName().toLowerCase().contains(search.toLowerCase()) ||
+<<<<<<< HEAD
                     ((post.getSubcatagory() != null)
                             && post.getSubcatagory().getName().toLowerCase().contains(search.toLowerCase()))));
         }
         if (salaryMin != null && salaryMax != null) {
             System.out.println("salary");
             posts.removeIf(post -> (post.getSalary() < salaryMin || post.getSalary() > salaryMax));
+=======
+                    post.getSubcatagory().getName().toLowerCase().contains(search.toLowerCase())));
+        }
+        if (salaryMin != null && salaryMax != null) {
+            System.out.println("salary");
+            posts.removeIf(post -> !(post.getSalary() < salaryMin || post.getSalary() > salaryMax));
+>>>>>>> 837cf3d (debugging from integration, fixed many dto errors, added url search params)
         }
 
         if (date != null) {
@@ -345,7 +359,10 @@ public class JobPostService {
 
             response.add(res);
         }
+<<<<<<< HEAD
         System.out.println(response);
+=======
+>>>>>>> 837cf3d (debugging from integration, fixed many dto errors, added url search params)
         return response;
     }
 
