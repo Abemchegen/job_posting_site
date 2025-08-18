@@ -77,7 +77,7 @@ public class JobApplicationController {
 
         JobApplicationResponse application = jobApplicationService.findById(applicationid);
 
-        if (application.userInfo().getId() != currentUser.getId()) {
+        if (application.getUserInfo().getId() != currentUser.getId()) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Access denied");
 
         }
@@ -96,7 +96,7 @@ public class JobApplicationController {
 
         JobApplicationResponse existingapplication = jobApplicationService.findById(applicationid);
 
-        if (existingapplication.userInfo().getId() != currentUser.getId()) {
+        if (existingapplication.getUserInfo().getId() != currentUser.getId()) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Access denied");
 
         }
@@ -131,7 +131,7 @@ public class JobApplicationController {
 
         JobApplicationResponse application = jobApplicationService.findById(applicationID);
 
-        if (application.userInfo().getId() != currentUser.getId()) {
+        if (application.getUserInfo().getId() != currentUser.getId()) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Access denied");
         }
 

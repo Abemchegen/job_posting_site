@@ -47,8 +47,6 @@ public class AgentService {
             throw new ObjectNotFound("User", "id");
         }
 
-        // Ensure all lists are initialized
-
         Agent agent = optionalAgent.get();
         Cv cv = agent.getCv();
         if (cv == null) {
@@ -247,7 +245,7 @@ public class AgentService {
     }
 
     public AgentResponse deleteCv(String name, long deleteid, long agentid) {
-    System.out.println("DeleteCv called with name: '" + name + "' and id: " + deleteid);
+        System.out.println("DeleteCv called with name: '" + name + "' and id: " + deleteid);
         Optional<Agent> optionalAgent = agentRepo.findById(agentid);
 
         if (!optionalAgent.isPresent()) {

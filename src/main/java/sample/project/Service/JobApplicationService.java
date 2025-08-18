@@ -75,13 +75,33 @@ public class JobApplicationService {
         UserResponse userInfo = new UserResponse(user.getId(), user.getName(), user.getEmail(),
                 user.getPhonenumber(), user.getBirthdate(), user.getRole(), user.getPfpUrl());
 
-        return new JobApplicationResponse(app.getId(), userInfo, agent.get().getCv(), app.getJobPost().getId(),
+        JobApplicationResponse res = new JobApplicationResponse(app.getId(), userInfo, agent.get().getCv(),
+                app.getJobPost().getId(),
                 app.getAppliedAt(), app.getCoverLetter(), String.valueOf(app.getStatus()), app.getCvURL(),
-                jobPost.getJobName(), jobPost.getSubcatagory().getName(), jobPost.getCompany().getName());
+                jobPost.getJobName(), null, jobPost.getCompany().getName());
+
+        if (jobPost.getSubcatagory() != null) {
+            res.setSubcatName(jobPost.getSubcatagory().getName());
+        }
+
+        return res;
     }
 
     public void delete(Long jobApplicationID) {
+
+        Optional<JobApplication> app = jobApplicationRepo.findById(jobApplicationID);
+
+        if (app.isPresent()) {
+            try {
+                cloudinaryService.deleteFile(app.get().getCvURL(), false);
+
+            } catch (Exception e) {
+                throw new RuntimeException("CV delete failed, application not deleted");
+
+            }
+        }
         jobApplicationRepo.deleteById(jobApplicationID);
+
     }
 
     public JobApplicationResponse findById(Long jobApplicationID) {
@@ -96,10 +116,17 @@ public class JobApplicationService {
         UserResponse userInfo = new UserResponse(user.getId(), user.getName(), user.getEmail(),
                 user.getPhonenumber(), user.getBirthdate(), user.getRole(), user.getPfpUrl());
 
-        return new JobApplicationResponse(app.getId(), userInfo, agent.getCv(), app.getJobPost().getId(),
+        JobApplicationResponse res = new JobApplicationResponse(app.getId(), userInfo, agent.getCv(),
+                app.getJobPost().getId(),
                 app.getAppliedAt(), app.getCoverLetter(), String.valueOf(app.getStatus()), app.getCvURL(),
-                app.getJobPost().getJobName(), app.getJobPost().getSubcatagory().getName(),
+                app.getJobPost().getJobName(), null,
                 app.getJobPost().getCompany().getName());
+
+        if (app.getJobPost().getSubcatagory() != null) {
+            res.setSubcatName(app.getJobPost().getSubcatagory().getName());
+        }
+        return res;
+
     }
 
     public List<JobApplicationResponse> findAllApplications(
@@ -116,12 +143,13 @@ public class JobApplicationService {
             System.out.println(search);
             applications.removeIf(app -> !(app.getJobPost().getJobName().toLowerCase().contains(search.toLowerCase()) ||
                     app.getJobPost().getCompany().getName().toLowerCase().contains(search.toLowerCase()) ||
-                    app.getJobPost().getSubcatagory().getName().toLowerCase().contains(search.toLowerCase())));
+                    (app.getJobPost().getSubcatagory() != null && app.getJobPost().getSubcatagory().getName()
+                            .toLowerCase().contains(search.toLowerCase()))));
         }
         if (salaryMin != null && salaryMax != null) {
             System.out.println("salary");
             applications.removeIf(
-                    app -> !(app.getJobPost().getSalary() < salaryMin || app.getJobPost().getSalary() > salaryMax));
+                    app -> (app.getJobPost().getSalary() < salaryMin || app.getJobPost().getSalary() > salaryMax));
         }
         if (status != null) {
             System.out.println("status");
@@ -170,12 +198,23 @@ public class JobApplicationService {
                 UserResponse userInfo = new UserResponse(user.getId(), user.getName(),
                         user.getEmail(),
                         user.getPhonenumber(), user.getBirthdate(), user.getRole(), user.getPfpUrl());
-                response.add(new JobApplicationResponse(app.getId(), userInfo, agent.getCv(), app.getJobPost().getId(),
+                JobApplicationResponse res = new JobApplicationResponse(app.getId(), userInfo, agent.getCv(),
+                        app.getJobPost().getId(),
                         app.getAppliedAt(), app.getCoverLetter(), String.valueOf(app.getStatus()), app.getCvURL(),
-                        app.getJobPost().getJobName(), app.getJobPost().getSubcatagory().getName(),
-                        app.getJobPost().getCompany().getName()));
+                        app.getJobPost().getJobName(), null,
+                        app.getJobPost().getCompany().getName());
+
+                if (app.getJobPost().getSubcatagory() != null) {
+                    res.setSubcatName(app.getJobPost().getSubcatagory().getName());
+
+                }
+                response.add(res);
+
             }
+
         }
+        System.out.println(response != null);
+
         return response;
 
     }
@@ -198,12 +237,18 @@ public class JobApplicationService {
                 user.getEmail(),
                 user.getPhonenumber(), user.getBirthdate(), user.getRole(), user.getPfpUrl());
 
-        return new JobApplicationResponse(jobApplication.getId(), userInfo, agent.getCv(),
+        JobApplicationResponse res = new JobApplicationResponse(jobApplication.getId(), userInfo, agent.getCv(),
                 jobApplication.getJobPost().getId(),
                 jobApplication.getAppliedAt(), jobApplication.getCoverLetter(),
                 String.valueOf(jobApplication.getStatus()), jobApplication.getCvURL(),
-                jobApplication.getJobPost().getJobName(), jobApplication.getJobPost().getSubcatagory().getName(),
+                jobApplication.getJobPost().getJobName(), null,
                 jobApplication.getJobPost().getCompany().getName());
+
+        if (jobApplication.getJobPost().getSubcatagory() != null) {
+            res.setSubcatName(jobApplication.getJobPost().getSubcatagory().getName());
+        }
+
+        return res;
     }
 
     public List<AgentJobpostResponse> getJobposts(Integer salaryMin, Integer salaryMax,
@@ -217,11 +262,12 @@ public class JobApplicationService {
             System.out.println(search);
             posts.removeIf(post -> !(post.getJobName().toLowerCase().contains(search.toLowerCase()) ||
                     post.getCompany().getName().toLowerCase().contains(search.toLowerCase()) ||
-                    post.getSubcatagory().getName().toLowerCase().contains(search.toLowerCase())));
+                    ((post.getSubcatagory() != null)
+                            && post.getSubcatagory().getName().toLowerCase().contains(search.toLowerCase()))));
         }
         if (salaryMin != null && salaryMax != null) {
             System.out.println("salary");
-            posts.removeIf(post -> !(post.getSalary() < salaryMin || post.getSalary() > salaryMax));
+            posts.removeIf(post -> (post.getSalary() < salaryMin || post.getSalary() > salaryMax));
         }
 
         if (date != null) {
@@ -296,6 +342,7 @@ public class JobApplicationService {
                 responses.add(response);
             }
         }
+
         return responses;
 
     }

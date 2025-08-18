@@ -257,8 +257,8 @@ public class UserService {
 
         }
         if (role != null) {
-            System.out.println(search);
-            users.removeIf(user -> !(user.getRole().toString().toLowerCase().contains(role.toLowerCase())));
+            System.out.println(role);
+            users.removeIf(user -> !(user.getRole().toString().toLowerCase().equals(role.toLowerCase())));
 
         }
 
@@ -437,7 +437,15 @@ public class UserService {
         User user = optionalUser.get();
         String oldPfpUrl = user.getPfpUrl();
         if (oldPfpUrl != null && !oldPfpUrl.isEmpty()) {
-            cloudinaryService.deleteFile(oldPfpUrl);
+
+            try {
+                cloudinaryService.deleteFile(oldPfpUrl, true);
+
+            } catch (Exception e) {
+                e.printStackTrace(); // This prints the full stack trace to your logs
+                throw new RuntimeException("profile picture delete failed, image not uploaded" + e.getMessage());
+
+            }
         }
 
         String pfp;

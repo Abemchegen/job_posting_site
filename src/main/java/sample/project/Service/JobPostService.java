@@ -21,7 +21,6 @@ import sample.project.Model.JobApplication;
 import sample.project.Model.JobPost;
 import sample.project.Model.Subcatagory;
 import sample.project.Model.User;
-import sample.project.Repo.JobApplicationRepo;
 import sample.project.Repo.JobPostRepo;
 
 @Service
@@ -199,8 +198,12 @@ public class JobPostService {
                     app.getJobPost().getId(),
                     app.getAppliedAt(), app.getCoverLetter(),
                     String.valueOf(app.getStatus()), app.getCvURL(), app.getJobPost().getJobName(),
-                    app.getJobPost().getSubcatagory().getName(),
+                    null,
                     app.getJobPost().getCompany().getName());
+
+            if (app.getJobPost().getSubcatagory() != null) {
+                response.setSubcatName(app.getJobPost().getSubcatagory().getName());
+            }
             responses.add(response);
         }
         return responses;
@@ -210,7 +213,7 @@ public class JobPostService {
         List<JobApplicationResponse> applications = getJobApplications(jobPostID);
 
         for (JobApplicationResponse app : applications) {
-            if (app.jobApplicationID() == jobApplicationID) {
+            if (app.getJobApplicationID() == jobApplicationID) {
                 return app;
             }
         }
@@ -230,13 +233,20 @@ public class JobPostService {
                 user.getEmail(),
                 user.getPhonenumber(), user.getBirthdate(), user.getRole(), user.getPfpUrl());
 
-        return new JobApplicationResponse(app.getId(), userInfo,
+        JobApplicationResponse res = new JobApplicationResponse(app.getId(), userInfo,
                 agent.getCv(),
                 app.getJobPost().getId(),
                 app.getAppliedAt(), app.getCoverLetter(),
                 String.valueOf(app.getStatus()), app.getCvURL(), app.getJobPost().getJobName(),
-                app.getJobPost().getSubcatagory().getName(),
+                null,
                 app.getJobPost().getCompany().getName());
+
+        if (app.getJobPost().getSubcatagory() != null) {
+            res.setSubcatName(app.getJobPost().getSubcatagory().getName());
+        }
+
+        return res;
+
     }
 
     private JobApplication getJobApplicationObject(Long jobPostID, Long jobApplicationID) {
@@ -274,11 +284,12 @@ public class JobPostService {
         if (search != null) {
             System.out.println(search);
             posts.removeIf(post -> !(post.getJobName().toLowerCase().contains(search.toLowerCase()) ||
-                    post.getSubcatagory().getName().toLowerCase().contains(search.toLowerCase())));
+                    ((post.getSubcatagory() != null)
+                            && post.getSubcatagory().getName().toLowerCase().contains(search.toLowerCase()))));
         }
         if (salaryMin != null && salaryMax != null) {
             System.out.println("salary");
-            posts.removeIf(post -> !(post.getSalary() < salaryMin || post.getSalary() > salaryMax));
+            posts.removeIf(post -> (post.getSalary() < salaryMin || post.getSalary() > salaryMax));
         }
 
         if (date != null) {
@@ -325,6 +336,7 @@ public class JobPostService {
 
             response.add(res);
         }
+        System.out.println(response);
         return response;
     }
 

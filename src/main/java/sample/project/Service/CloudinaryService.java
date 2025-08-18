@@ -34,46 +34,87 @@ public class CloudinaryService {
 
     @SuppressWarnings("unchecked")
     public String uploadFile(MultipartFile file, boolean image) throws IOException {
-        Map<String, Object> uploadResult = (Map<String, Object>) cloudinary.uploader().upload(file.getBytes(),
-                ObjectUtils.emptyMap());
-        String url = (String) uploadResult.get("secure_url");
+        Map<String, Object> options;
+
         if (image) {
-            String publicId = split(url);
+            options = ObjectUtils.emptyMap();
+        } else {
+            String publicId = "cv_" + System.currentTimeMillis(); // ensure unique
+            options = ObjectUtils.asMap(
+                    "resource_type", "raw",
+                    "flags", "inline",
+                    "format", "pdf",
+                    "public_id", publicId);
+        }
+
+        System.out.println("Upload options: " + options); // debug
+
+        Map<String, Object> uploadResult = (Map<String, Object>) cloudinary.uploader()
+                .upload(file.getBytes(), options);
+
+        String url = (String) uploadResult.get("secure_url");
+
+        if (image) {
+            String publicId = split(url, image);
             return publicId;
-
         }
+
         return url;
-
     }
 
-    public void deleteFile(String publicID) {
-
+    @SuppressWarnings("unchecked")
+    public void deleteFile(String publicIDorUrl, boolean image) {
+        String publicID = publicIDorUrl;
+        Map<String, Object> options;
+        if (!image) {
+            publicID = split(publicIDorUrl, image);
+            options = ObjectUtils.asMap("resource_type", "raw");
+        } else {
+            options = ObjectUtils.emptyMap();
+        }
+        System.out.println("public id " + publicID);
         try {
-            cloudinary.uploader().destroy(publicID, ObjectUtils.emptyMap());
+
+            Map result = cloudinary.uploader().destroy(publicID, options);
+            System.out.println("Cloudinary destroy result: " + result);
+            if (!"ok".equals(result.get("result"))) {
+                System.out.println("Delete failed: " + result.get("result"));
+            }
+
         } catch (Exception e) {
-            // Optionally log the error, but don't throw to avoid breaking user update
+            System.out.println("exception: " + e.getMessage());
         }
+
     }
 
-    private String split(String url) {
-        // https://res.cloudinary.com/<cloud_name>/image/upload/v<version>/<public_id>.<ext>
-        String[] parts = url.split("/image/upload/");
-        if (parts.length < 2) {
+    private String split(String url, boolean image) {
+        if (url == null)
             return null;
-        }
-        String afterUpload = parts[1];
-        // Remove version if present
-        int slashIdx = afterUpload.indexOf('/');
-        if (slashIdx >= 0) {
-            afterUpload = afterUpload.substring(slashIdx + 1);
-        }
-        // Remove extension
-        int dotIdx = afterUpload.lastIndexOf('.');
 
-        if (dotIdx > 0) {
-            afterUpload = afterUpload.substring(0, dotIdx);
+        // Remove query parameters
+        String cleanUrl = url.split("\\?")[0];
+
+        // Match everything after /upload/ (handles /image/upload/ and /raw/upload/)
+        int uploadIndex = cleanUrl.indexOf("/upload/");
+        if (uploadIndex == -1)
+            return null;
+
+        String afterUpload = cleanUrl.substring(uploadIndex + "/upload/".length());
+
+        // Remove version if present (v123456789)
+        if (afterUpload.matches("^v\\d+/.*")) {
+            afterUpload = afterUpload.substring(afterUpload.indexOf('/') + 1);
         }
-        System.out.println("parts:" + parts + "afterupload:" + afterUpload + "dotidx" + dotIdx);
+
+        if (image) {
+            // Remove file extension
+            int dotIdx = afterUpload.lastIndexOf('.');
+            if (dotIdx > 0) {
+                afterUpload = afterUpload.substring(0, dotIdx);
+            }
+        }
+
         return afterUpload;
     }
+
 }
