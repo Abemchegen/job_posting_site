@@ -13,6 +13,7 @@ import sample.project.DTO.request.ChatRequest;
 import sample.project.DTO.response.AgentResponse;
 import sample.project.DTO.response.CompanyResponse;
 import sample.project.DTO.response.UserResponse;
+import sample.project.ErrorHandling.Exception.AccessDenied;
 import sample.project.Model.Agent;
 import sample.project.Model.ChatMessage;
 import sample.project.Model.Company;
