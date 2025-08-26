@@ -22,6 +22,7 @@ import lombok.RequiredArgsConstructor;
 import sample.project.DTO.request.ChangePasswordRequest;
 import sample.project.DTO.request.LoginRequest;
 import sample.project.DTO.request.RegisterRequest;
+import sample.project.DTO.request.VerifyEmailRequest;
 import sample.project.DTO.response.LoginResponse;
 import sample.project.DTO.response.RegisterResponse;
 import sample.project.DTO.response.UserResponse;
@@ -37,16 +38,10 @@ public class UserController {
     private final UserService userService;
 
     @PostMapping("/public")
-    public ResponseEntity<UserResponse> createUser(@Valid @RequestBody RegisterRequest req,
-            HttpServletResponse response) {
-        System.err.println("here");
-        RegisterResponse registerResponse = userService.createUser(req);
+    public ResponseEntity<String> createUser(@Valid @RequestBody RegisterRequest req) {
+        userService.createUser(req);
 
-        String cookie = "jwt=" + registerResponse.token()
-                + "; Max-Age=86400; Path=/; HttpOnly; ";
-        response.setHeader("Set-Cookie", cookie);
-
-        return ResponseEntity.ok().body(registerResponse.response());
+        return ResponseEntity.ok().body("Register Successful");
     }
 
     @PostMapping("/public/login")
@@ -67,7 +62,7 @@ public class UserController {
     }
 
     @GetMapping("/{userid}")
-    @PreAuthorize("hasAnyRole('ADMIN')")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<UserResponse> getUser(@PathVariable long userid, @AuthenticationPrincipal User currentUser) {
 
         UserResponse response = userService.getUser(userid);
@@ -77,10 +72,29 @@ public class UserController {
     @GetMapping("/auth/me")
     public ResponseEntity<UserResponse> getMe(@AuthenticationPrincipal User currentUser) {
         if (currentUser == null) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found");
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "User not authenticated");
         }
         UserResponse response = userService.getUser(currentUser.getId());
         return ResponseEntity.ok().body(response);
+    }
+
+    @PostMapping("/public/verifyEmail")
+    public ResponseEntity<UserResponse> verifyEmail(@RequestBody VerifyEmailRequest req,
+            HttpServletResponse response) {
+        RegisterResponse registerResponse = userService.verifyEmail(req.code(), req.email());
+
+        String cookie = "jwt=" + registerResponse.token()
+                + "; Max-Age=86400; Path=/; HttpOnly; ";
+        response.setHeader("Set-Cookie", cookie);
+
+        return ResponseEntity.ok().body(registerResponse.response());
+
+    }
+
+    @GetMapping("/public/resendCode")
+    public ResponseEntity<String> resendCode(@RequestParam String email) {
+        userService.resendCode(email);
+        return ResponseEntity.ok().body("Code resent to email account");
     }
 
     @GetMapping

@@ -30,6 +30,7 @@ public class JobPostService {
     private final JobPostRepo jobPostRepo;
     private final CompanyService companyService;
     private final JobService jobService;
+    private final EmailService emailService;
 
     public JobpostResponse postJob(JobPostRequest req) {
         Optional<Company> optionalCompany = companyService.getCompany(req.getCompanyName());
@@ -229,6 +230,14 @@ public class JobPostService {
         app.setStatus(req.getStatus());
         Agent agent = app.getAgent();
         User user = agent.getUser();
+
+        emailService.sendMessage(
+                user.getEmail(),
+                "Application status update",
+                "Your application to company " + app.getJobPost().getCompany().getName() +
+                        " for the position " + app.getJobPost().getJobName() +
+                        " has changed status to: " + app.getStatus().toString());
+
         UserResponse userInfo = new UserResponse(user.getId(), user.getName(),
                 user.getEmail(),
                 user.getPhonenumber(), user.getBirthdate(), user.getRole(), user.getPfpUrl());

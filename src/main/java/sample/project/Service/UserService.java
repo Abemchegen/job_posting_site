@@ -1,17 +1,20 @@
 package sample.project.Service;
 
 import java.io.IOException;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
+import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.server.ResponseStatusException;
 
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
@@ -46,9 +49,10 @@ public class UserService {
     private final CompanyService companyService;
     private final AgentService agentService;
     private final CloudinaryService cloudinaryService;
+    private final EmailService emailService;
 
     @Transactional
-    public RegisterResponse createUser(RegisterRequest req) {
+    public void createUser(RegisterRequest req) {
 
         if ((!req.getRole().equals("COMPANY")) && (!req.getRole().equals("AGENT"))) {
             throw new AccessDenied();
@@ -77,8 +81,7 @@ public class UserService {
         user.setEmail(req.getEmail());
         user.setPhonenumber(req.getPhonenumber());
         user.setBirthdate(req.getBirthdate());
-        user.setPassword(req.getPassword());
-        user.setPassword(passwordEncoder.encode(user.getPassword()));
+        user.setPassword(passwordEncoder.encode(req.getPassword()));
 
         if ((req.getRole().equals("COMPANY")) || (req.getRole().equals("AGENT"))) {
             user.setRole(Role.valueOf(req.getRole()));
@@ -87,51 +90,15 @@ public class UserService {
             Company company = companyService.findOrCreateCompany(req.getCompanyName(), req.getCompanyPhonenumber());
             user.setCompany(company);
         }
+        String code = String.format("%06d", new java.util.Random().nextInt(999999));
+        user.setVerificationCode(code);
+        user.setEmailVerificationExpiry(LocalDateTime.now().plusMinutes(15));
+        user.setEmailVerified(false);
+        emailService.sendMessage(user.getEmail(), "Sira website verification code", "Your verification code " + code);
         User savedUser = userRepo.save(user);
-        if (req.getRole().equals("AGENT")) {
+        if (req.getRole().toString().equals("AGENT")) {
             agentService.addAgent(savedUser);
         }
-
-        String token = jwtService.generateToken(user);
-        UserResponse resp;
-        if (savedUser.getRole().toString().equals("AGENT")) {
-            resp = AgentResponse.builder()
-                    .id(savedUser.getId())
-                    .name(savedUser.getName())
-                    .email(savedUser.getEmail())
-                    .phonenumber(savedUser.getPhonenumber())
-                    .birthdate(savedUser.getBirthdate())
-                    .pfp(savedUser.getPfpUrl())
-                    .role(savedUser.getRole())
-                    .cv(savedUser.getAgent() != null ? savedUser.getAgent().getCv() : null)
-                    .build();
-        } else if (savedUser.getRole().toString().equals("COMPANY")) {
-            resp = CompanyResponse.builder()
-                    .id(savedUser.getId())
-                    .name(savedUser.getName())
-                    .email(savedUser.getEmail())
-                    .phonenumber(savedUser.getPhonenumber())
-                    .birthdate(savedUser.getBirthdate())
-                    .pfp(savedUser.getPfpUrl())
-                    .role(savedUser.getRole())
-                    .companyId(savedUser.getCompany() != null ? savedUser.getCompany().getId() : null)
-                    .companyName(savedUser.getCompany() != null ? savedUser.getCompany().getName() : null)
-                    .companyPhonenumber(
-                            savedUser.getCompany() != null ? savedUser.getCompany().getPhoneNumber() : null)
-                    .build();
-        } else {
-            resp = UserResponse.builder()
-                    .id(savedUser.getId())
-                    .name(savedUser.getName())
-                    .email(savedUser.getEmail())
-                    .phonenumber(savedUser.getPhonenumber())
-                    .birthdate(savedUser.getBirthdate())
-                    .pfp(savedUser.getPfpUrl())
-                    .role(savedUser.getRole())
-                    .build();
-        }
-
-        return new RegisterResponse(savedUser.getId(), token, resp);
     }
 
     public UserResponse getUser(Long id) {
@@ -198,9 +165,14 @@ public class UserService {
         if (authentication.isAuthenticated()) {
             Optional<User> optionalUser = getUserByEmail(req.email());
             if (!optionalUser.isPresent()) {
-                return new LoginResponse(null, null, null);
+                return new LoginResponse(null, null, null, "User doesn't exist");
             }
             User user = optionalUser.get();
+
+            if (!user.isEnabled()) {
+                resendCode(req.email());
+                return new LoginResponse(null, null, null, "Please verify your email before logging in");
+            }
             String token = jwtService.generateToken(user);
             UserResponse resp;
             if (user.getRole().toString().equals("AGENT")) {
@@ -239,10 +211,10 @@ public class UserService {
                         .role(user.getRole())
                         .build();
             }
-            return new LoginResponse(user.getId(), token, resp);
+            return new LoginResponse(user.getId(), token, resp, "Login Successfull");
 
         } else {
-            return new LoginResponse(null, null, null);
+            return new LoginResponse(null, null, null, "Login Failure");
         }
     }
 
@@ -481,6 +453,83 @@ public class UserService {
         }
         user.setPassword(passwordEncoder.encode(req.newPassword()));
 
+    }
+
+    @Transactional
+    public RegisterResponse verifyEmail(String code, String email) {
+
+        Optional<User> opUser = userRepo.findByEmail(email);
+        if (!opUser.isPresent()) {
+            throw new ObjectNotFound("user", "email");
+        }
+
+        User user = opUser.get();
+
+        if (!code.equals(user.getVerificationCode()) ||
+                user.getEmailVerificationExpiry().isBefore(LocalDateTime.now())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid or expired code");
+        }
+        if (!user.isEnabled()) {
+            user.setEmailVerified(true);
+            user.setVerificationCode(null);
+            user.setEmailVerificationExpiry(null);
+
+        }
+
+        String token = jwtService.generateToken(user);
+        UserResponse res = null;
+
+        if (user.getCompany() != null) {
+            res = CompanyResponse.builder()
+                    .id(user.getId())
+                    .birthdate(user.getBirthdate())
+                    .email(user.getEmail())
+                    .phonenumber(user.getPhonenumber())
+                    .name(user.getName())
+                    .role(user.getRole())
+                    .pfp(user.getPfpUrl())
+                    .companyId(user.getCompany().getId())
+                    .companyName(user.getCompany().getName())
+                    .companyPhonenumber(user.getCompany().getPhoneNumber())
+                    .build();
+        }
+
+        else if (user.getAgent() != null) {
+            Agent agent = user.getAgent();
+            res = AgentResponse.builder()
+                    .id(agent.getId())
+                    .birthdate(user.getBirthdate())
+                    .email(user.getEmail())
+                    .phonenumber(user.getPhonenumber())
+                    .name(user.getName())
+                    .role(user.getRole())
+                    .pfp(user.getPfpUrl())
+                    .cv(user.getAgent().getCv())
+                    .build();
+        } else if (user.getRole().toString().equals("ADMIN")) {
+            res = UserResponse.builder().id(user.getId()).birthdate(user.getBirthdate()).email(user.getEmail())
+                    .phonenumber(user.getPhonenumber()).name(user.getName()).role(user.getRole()).build();
+        }
+
+        return new RegisterResponse(user.getId(), token, res);
+    }
+
+    @Transactional
+    public void resendCode(String email) {
+        Optional<User> opUser = userRepo.findByEmail(email);
+        if (!opUser.isPresent()) {
+            throw new ObjectNotFound("user", "email");
+        }
+
+        User user = opUser.get();
+
+        String code = String.format("%06d", new java.util.Random().nextInt(999999));
+        user.setVerificationCode(code);
+        user.setEmailVerificationExpiry(LocalDateTime.now().plusMinutes(15));
+        user.setEmailVerified(false);
+        userRepo.save(user);
+        emailService.sendMessage(user.getEmail(),
+                "Sira website verification code", "Your verification code " + code);
     }
 
 }

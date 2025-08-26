@@ -1,6 +1,7 @@
 package sample.project.Model;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.Collections;
 
@@ -57,7 +58,6 @@ public class User implements UserDetails {
     private String password;
     @Enumerated(EnumType.STRING)
     private Role role;
-
     private String pfpUrl;
     @ManyToOne
     @JsonBackReference("company-user")
@@ -66,6 +66,10 @@ public class User implements UserDetails {
     @JsonBackReference("agent-user")
     private Agent agent;
 
+    private String verificationCode;
+    private LocalDateTime emailVerificationExpiry;
+    private boolean emailVerified;
+
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
         return Collections.singleton(new SimpleGrantedAuthority("ROLE_" + role.name()));
@@ -73,7 +77,7 @@ public class User implements UserDetails {
 
     @Override
     public boolean isEnabled() {
-        return true;
+        return emailVerified;
     }
 
     @Override
