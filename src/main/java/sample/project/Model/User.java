@@ -2,13 +2,8 @@ package sample.project.Model;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.Collection;
-import java.util.Collections;
 
 import org.springframework.lang.NonNull;
-import org.springframework.security.core.GrantedAuthority;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
-import org.springframework.security.core.userdetails.UserDetails;
 
 import com.fasterxml.jackson.annotation.JsonBackReference;
 
@@ -38,7 +33,7 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 @Data
 @Builder
-public class User implements UserDetails {
+public class User {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private long id;
@@ -53,9 +48,6 @@ public class User implements UserDetails {
     private String phonenumber;
     @Past
     private LocalDate birthdate;
-    @NotEmpty
-    @NonNull
-    private String password;
     @Enumerated(EnumType.STRING)
     private Role role;
     private String pfpUrl;
@@ -65,39 +57,8 @@ public class User implements UserDetails {
     @OneToOne(mappedBy = "user")
     @JsonBackReference("agent-user")
     private Agent agent;
-
     private String verificationCode;
     private LocalDateTime emailVerificationExpiry;
     private boolean emailVerified;
-
-    @Override
-    public Collection<? extends GrantedAuthority> getAuthorities() {
-        return Collections.singleton(new SimpleGrantedAuthority("ROLE_" + role.name()));
-    }
-
-    @Override
-    public boolean isEnabled() {
-        return emailVerified;
-    }
-
-    @Override
-    public boolean isAccountNonExpired() {
-        return true;
-    }
-
-    @Override
-    public boolean isAccountNonLocked() {
-        return true;
-    }
-
-    @Override
-    public boolean isCredentialsNonExpired() {
-        return true;
-    }
-
-    @Override
-    public String getUsername() {
-        return email;
-    }
 
 }

@@ -12,16 +12,21 @@ import sample.project.DTO.request.JobPostRequest;
 import sample.project.DTO.request.UpdateJobPost;
 import sample.project.DTO.response.JobApplicationResponse;
 import sample.project.DTO.response.JobpostResponse;
+import sample.project.ErrorHandling.Exception.AccessDenied;
+import sample.project.ErrorHandling.Exception.ObjectNotFound;
 import sample.project.Model.Company;
 import sample.project.Model.User;
 import sample.project.Service.JobPostService;
+import sample.project.Service.UserService;
 
 import java.util.List;
+import java.util.Optional;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -35,13 +40,19 @@ import org.springframework.web.bind.annotation.GetMapping;
 public class JobPostController {
 
     private final JobPostService jobPostService;
+    private final UserService userService;
 
     @PostMapping("/create")
     @PreAuthorize("hasRole('COMPANY')")
     public ResponseEntity<JobpostResponse> createJobPost(@Valid @RequestBody JobPostRequest req,
-            @AuthenticationPrincipal User currentUser) {
+            @AuthenticationPrincipal Jwt jwt) {
 
-        Company company = currentUser.getCompany();
+        Optional<User> user = userService.getUserByEmail(jwt.getClaim("email"));
+        if (!user.isPresent()) {
+            throw new AccessDenied();
+        }
+
+        Company company = user.get().getCompany();
         if (!company.getName().equals(req.getCompanyName())) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN,
                     "Access denied , you can only create post for your company");
@@ -54,10 +65,16 @@ public class JobPostController {
     @PostMapping("/update/{jobpostID}")
     @PreAuthorize("hasRole('COMPANY')")
     public ResponseEntity<JobpostResponse> updateJobPost(@RequestBody UpdateJobPost req, @PathVariable Long jobpostID,
-            @AuthenticationPrincipal User currentUser) {
+            @AuthenticationPrincipal Jwt jwt) {
+
+        Optional<User> user = userService.getUserByEmail(jwt.getClaim("email"));
+
+        if (!user.isPresent()) {
+            throw new ObjectNotFound("user", "email");
+        }
 
         JobpostResponse existingjobPost = jobPostService.getJobPostById(jobpostID);
-        Company company = currentUser.getCompany();
+        Company company = user.get().getCompany();
 
         boolean isSameCompany = company.getName().equals(existingjobPost.getCompanyName());
         if (!isSameCompany) {
@@ -72,9 +89,16 @@ public class JobPostController {
     @DeleteMapping("/{jobpostID}")
     @PreAuthorize("hasRole('COMPANY')")
     public ResponseEntity<String> deleteJobPost(@PathVariable Long jobpostID,
-            @AuthenticationPrincipal User currentUser) {
+            @AuthenticationPrincipal Jwt jwt) {
+
+        Optional<User> user = userService.getUserByEmail(jwt.getClaim("email"));
+
+        if (!user.isPresent()) {
+            throw new ObjectNotFound("user", "email");
+        }
+
         JobpostResponse existingjobPost = jobPostService.getJobPostById(jobpostID);
-        Company company = currentUser.getCompany();
+        Company company = user.get().getCompany();
 
         boolean isSameCompany = company.getName().equals(existingjobPost.getCompanyName());
         if (!isSameCompany) {
@@ -88,9 +112,16 @@ public class JobPostController {
     @GetMapping("/{jobpostID}/jobApplication")
     @PreAuthorize("hasRole('COMPANY')")
     public ResponseEntity<List<JobApplicationResponse>> getAllJobApplications(@PathVariable Long jobpostID,
-            @AuthenticationPrincipal User currentUser) {
+            @AuthenticationPrincipal Jwt jwt) {
+
+        Optional<User> user = userService.getUserByEmail(jwt.getClaim("email"));
+
+        if (!user.isPresent()) {
+            throw new ObjectNotFound("user", "email");
+        }
+
         JobpostResponse existingjobPost = jobPostService.getJobPostById(jobpostID);
-        Company company = currentUser.getCompany();
+        Company company = user.get().getCompany();
 
         boolean isSameCompany = company.getName().equals(existingjobPost.getCompanyName());
         if (!isSameCompany) {
@@ -106,9 +137,16 @@ public class JobPostController {
     @PreAuthorize("hasRole('COMPANY')")
     public ResponseEntity<JobApplicationResponse> getJobApplication(@PathVariable Long jobPostID,
             @PathVariable Long jobApplicationID,
-            @AuthenticationPrincipal User currentUser) {
+            @AuthenticationPrincipal Jwt jwt) {
+
+        Optional<User> user = userService.getUserByEmail(jwt.getClaim("email"));
+
+        if (!user.isPresent()) {
+            throw new ObjectNotFound("user", "email");
+        }
+
         JobpostResponse existingjobPost = jobPostService.getJobPostById(jobPostID);
-        Company company = currentUser.getCompany();
+        Company company = user.get().getCompany();
 
         boolean isSameCompany = company.getName().equals(existingjobPost.getCompanyName());
         if (!isSameCompany) {
@@ -125,9 +163,16 @@ public class JobPostController {
     public ResponseEntity<JobApplicationResponse> updateJobApplicationStatus(@PathVariable Long jobPostID,
             @PathVariable Long jobApplicationID,
             @RequestBody JobApplicationUpdateRequest req,
-            @AuthenticationPrincipal User currentUser) {
+            @AuthenticationPrincipal Jwt jwt) {
+
+        Optional<User> user = userService.getUserByEmail(jwt.getClaim("email"));
+
+        if (!user.isPresent()) {
+            throw new ObjectNotFound("user", "email");
+        }
+
         JobpostResponse existingjobPost = jobPostService.getJobPostById(jobPostID);
-        Company company = currentUser.getCompany();
+        Company company = user.get().getCompany();
 
         boolean isSameCompany = company.getName().equals(existingjobPost.getCompanyName());
         if (!isSameCompany) {
@@ -140,15 +185,22 @@ public class JobPostController {
     }
 
     @GetMapping("/company")
-    public ResponseEntity<List<JobpostResponse>> getAllJobPostsCompany(@AuthenticationPrincipal User currentUser,
+    public ResponseEntity<List<JobpostResponse>> getAllJobPostsCompany(@AuthenticationPrincipal Jwt jwt,
             @RequestParam(required = false) Integer salaryMin,
             @RequestParam(required = false) Integer salaryMax,
             @RequestParam(required = false) String date,
             @RequestParam(required = false) String search,
             @RequestParam(required = false) String sort) {
 
-        List<JobpostResponse> jobPosts = jobPostService.getAllJobPostsCompany(currentUser.getCompany().getName(),
+        Optional<User> user = userService.getUserByEmail(jwt.getClaim("email"));
+
+        if (!user.isPresent()) {
+            throw new ObjectNotFound("user", "email");
+        }
+
+        List<JobpostResponse> jobPosts = jobPostService.getAllJobPostsCompany(user.get().getCompany().getName(),
                 salaryMin, salaryMax, date, sort, search);
+
         return ResponseEntity.ok().body(jobPosts);
 
     }
