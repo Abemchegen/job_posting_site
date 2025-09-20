@@ -3,7 +3,6 @@ package sample.project.Service;
 import java.io.IOException;
 import java.time.LocalDate;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
@@ -14,9 +13,8 @@ import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import sample.project.DTO.response.AgentJobpostResponse;
 import sample.project.DTO.response.JobApplicationResponse;
+import sample.project.DTO.response.ServiceResponse;
 import sample.project.DTO.response.UserResponse;
-import sample.project.ErrorHandling.Exception.ObjectNotFound;
-import sample.project.ErrorHandling.Exception.RequiredFieldsEmpty;
 import sample.project.Model.Agent;
 import sample.project.Model.JobApplication;
 import sample.project.Model.JobPost;
@@ -33,40 +31,41 @@ public class JobApplicationService {
     private final JobPostService jobPostService;
     private final CloudinaryService cloudinaryService;
 
-    public JobApplicationResponse apply(String coverLetter, MultipartFile file, long agentId, long jobPostID) {
+    public ServiceResponse<JobApplicationResponse> apply(String coverLetter, MultipartFile file, long agentId,
+            long jobPostID) {
 
         Optional<Agent> agent = agentService.findAgentById(agentId);
         if (!agent.isPresent()) {
-            throw new ObjectNotFound("agent", "id");
+            return new ServiceResponse<JobApplicationResponse>(false, "Agent not found", null);
         }
-        if (agent.get().getCv() == null && file == null) {
-            throw new RequiredFieldsEmpty("Job application", Collections.singletonList("CV"));
+
+        ServiceResponse<JobPost> jobPost = jobPostService.getJobPostObjectById(jobPostID);
+
+        if (!jobPost.isSuccess()) {
+            return new ServiceResponse<JobApplicationResponse>(false, "Job post not found", null);
         }
-        JobPost jobPost = jobPostService.getJobPostObjectById(jobPostID);
 
         JobApplication jobApplication = new JobApplication();
         jobApplication.setAgent(agent.get());
-        jobApplication.setJobPost(jobPost);
+        jobApplication.setJobPost(jobPost.getData());
         jobApplication.setCoverLetter(coverLetter);
         jobApplication.setStatus(Status.PENDING);
         jobApplication.setAppliedAt(LocalDate.now());
 
         if (file != null) {
             if (!"application/pdf".equalsIgnoreCase(file.getContentType())) {
-                throw new RequiredFieldsEmpty("Job application", Collections.singletonList("CV must be a PDF file"));
+                return new ServiceResponse<JobApplicationResponse>(false, "Cv must be pdf", null);
             }
             // Optional: Check file extension
             String filename = file.getOriginalFilename();
             if (filename == null || !filename.toLowerCase().endsWith(".pdf")) {
-                throw new RequiredFieldsEmpty("Job application",
-                        Collections.singletonList("CV file extension must be .pdf"));
+                return new ServiceResponse<JobApplicationResponse>(false, "Cv extention must be .pdf", null);
             }
             String url = "";
             try {
                 url = cloudinaryService.uploadFile(file, false);
             } catch (IOException e) {
-                throw new RequiredFieldsEmpty("Job application", Collections.singletonList("CV upload failed"));
-
+                return new ServiceResponse<JobApplicationResponse>(false, "Cv upload failed", null);
             }
             jobApplication.setCvURL(url);
         }
@@ -75,45 +74,41 @@ public class JobApplicationService {
         UserResponse userInfo = new UserResponse(user.getId(), user.getName(), user.getEmail(),
                 user.getPhonenumber(), user.getBirthdate(), user.getRole(), user.getPfpUrl());
 
-<<<<<<< HEAD
         JobApplicationResponse res = new JobApplicationResponse(app.getId(), userInfo, agent.get().getCv(),
                 app.getJobPost().getId(),
                 app.getAppliedAt(), app.getCoverLetter(), String.valueOf(app.getStatus()), app.getCvURL(),
-                jobPost.getJobName(), null, jobPost.getCompany().getName());
+                jobPost.getData().getJobName(), null, jobPost.getData().getCompany().getName());
 
-        if (jobPost.getSubcatagory() != null) {
-            res.setSubcatName(jobPost.getSubcatagory().getName());
+        if (jobPost.getData().getSubcatagory() != null) {
+            res.setSubcatName(jobPost.getData().getSubcatagory().getName());
         }
 
-        return res;
-=======
-        return new JobApplicationResponse(app.getId(), userInfo, agent.get().getCv(), app.getJobPost().getId(),
-                app.getAppliedAt(), app.getCoverLetter(), String.valueOf(app.getStatus()), app.getCvURL(),
-                jobPost.getJobName(), jobPost.getSubcatagory().getName(), jobPost.getCompany().getName());
->>>>>>> 837cf3d (debugging from integration, fixed many dto errors, added url search params)
+        return new ServiceResponse<JobApplicationResponse>(true, "", res);
     }
 
-    public void delete(Long jobApplicationID) {
+    public ServiceResponse<String> delete(Long jobApplicationID) {
 
         Optional<JobApplication> app = jobApplicationRepo.findById(jobApplicationID);
 
         if (app.isPresent()) {
             try {
                 cloudinaryService.deleteFile(app.get().getCvURL(), false);
-
             } catch (Exception e) {
-                throw new RuntimeException("CV delete failed, application not deleted");
+                return new ServiceResponse<String>(false, "CV delete failed, application not deleted",
+                        null);
 
             }
         }
         jobApplicationRepo.deleteById(jobApplicationID);
+        return new ServiceResponse<String>(true, "Job application deleted",
+                null);
 
     }
 
-    public JobApplicationResponse findById(Long jobApplicationID) {
+    public ServiceResponse<JobApplicationResponse> findById(Long jobApplicationID) {
         Optional<JobApplication> jobApplication = jobApplicationRepo.findById(jobApplicationID);
         if (!jobApplication.isPresent()) {
-            throw new ObjectNotFound("Job Application", "id");
+            return new ServiceResponse<JobApplicationResponse>(false, "job application not found", null);
         }
 
         JobApplication app = jobApplication.get();
@@ -121,7 +116,6 @@ public class JobApplicationService {
         User user = agent.getUser();
         UserResponse userInfo = new UserResponse(user.getId(), user.getName(), user.getEmail(),
                 user.getPhonenumber(), user.getBirthdate(), user.getRole(), user.getPfpUrl());
-<<<<<<< HEAD
 
         JobApplicationResponse res = new JobApplicationResponse(app.getId(), userInfo, agent.getCv(),
                 app.getJobPost().getId(),
@@ -132,15 +126,8 @@ public class JobApplicationService {
         if (app.getJobPost().getSubcatagory() != null) {
             res.setSubcatName(app.getJobPost().getSubcatagory().getName());
         }
-        return res;
+        return new ServiceResponse<JobApplicationResponse>(true, "", res);
 
-=======
-
-        return new JobApplicationResponse(app.getId(), userInfo, agent.getCv(), app.getJobPost().getId(),
-                app.getAppliedAt(), app.getCoverLetter(), String.valueOf(app.getStatus()), app.getCvURL(),
-                app.getJobPost().getJobName(), app.getJobPost().getSubcatagory().getName(),
-                app.getJobPost().getCompany().getName());
->>>>>>> 837cf3d (debugging from integration, fixed many dto errors, added url search params)
     }
 
     public List<JobApplicationResponse> findAllApplications(
@@ -157,21 +144,12 @@ public class JobApplicationService {
             System.out.println(search);
             applications.removeIf(app -> !(app.getJobPost().getJobName().toLowerCase().contains(search.toLowerCase()) ||
                     app.getJobPost().getCompany().getName().toLowerCase().contains(search.toLowerCase()) ||
-<<<<<<< HEAD
-                    (app.getJobPost().getSubcatagory() != null && app.getJobPost().getSubcatagory().getName()
-                            .toLowerCase().contains(search.toLowerCase()))));
-=======
                     app.getJobPost().getSubcatagory().getName().toLowerCase().contains(search.toLowerCase())));
->>>>>>> 837cf3d (debugging from integration, fixed many dto errors, added url search params)
         }
         if (salaryMin != null && salaryMax != null) {
             System.out.println("salary");
             applications.removeIf(
-<<<<<<< HEAD
-                    app -> (app.getJobPost().getSalary() < salaryMin || app.getJobPost().getSalary() > salaryMax));
-=======
                     app -> !(app.getJobPost().getSalary() < salaryMin || app.getJobPost().getSalary() > salaryMax));
->>>>>>> 837cf3d (debugging from integration, fixed many dto errors, added url search params)
         }
         if (status != null) {
             System.out.println("status");
@@ -220,7 +198,6 @@ public class JobApplicationService {
                 UserResponse userInfo = new UserResponse(user.getId(), user.getName(),
                         user.getEmail(),
                         user.getPhonenumber(), user.getBirthdate(), user.getRole(), user.getPfpUrl());
-<<<<<<< HEAD
                 JobApplicationResponse res = new JobApplicationResponse(app.getId(), userInfo, agent.getCv(),
                         app.getJobPost().getId(),
                         app.getAppliedAt(), app.getCoverLetter(), String.valueOf(app.getStatus()), app.getCvURL(),
@@ -233,26 +210,19 @@ public class JobApplicationService {
                 }
                 response.add(res);
 
-=======
-                response.add(new JobApplicationResponse(app.getId(), userInfo, agent.getCv(), app.getJobPost().getId(),
-                        app.getAppliedAt(), app.getCoverLetter(), String.valueOf(app.getStatus()), app.getCvURL(),
-                        app.getJobPost().getJobName(), app.getJobPost().getSubcatagory().getName(),
-                        app.getJobPost().getCompany().getName()));
->>>>>>> 837cf3d (debugging from integration, fixed many dto errors, added url search params)
             }
 
         }
-        System.out.println(response != null);
-
         return response;
 
     }
 
     @Transactional
-    public JobApplicationResponse update(Long jobApplicationID, String coverLetter, MultipartFile file) {
+    public ServiceResponse<JobApplicationResponse> update(Long jobApplicationID, String coverLetter,
+            MultipartFile file) {
         Optional<JobApplication> optionalJobApplication = jobApplicationRepo.findById(jobApplicationID);
         if (!optionalJobApplication.isPresent()) {
-            throw new ObjectNotFound("Job Application", "id");
+            return new ServiceResponse<JobApplicationResponse>(false, "Job application not found", null);
         }
 
         JobApplication jobApplication = optionalJobApplication.get();
@@ -270,7 +240,6 @@ public class JobApplicationService {
                 jobApplication.getJobPost().getId(),
                 jobApplication.getAppliedAt(), jobApplication.getCoverLetter(),
                 String.valueOf(jobApplication.getStatus()), jobApplication.getCvURL(),
-<<<<<<< HEAD
                 jobApplication.getJobPost().getJobName(), null,
                 jobApplication.getJobPost().getCompany().getName());
 
@@ -278,14 +247,11 @@ public class JobApplicationService {
             res.setSubcatName(jobApplication.getJobPost().getSubcatagory().getName());
         }
 
-        return res;
-=======
-                jobApplication.getJobPost().getJobName(), jobApplication.getJobPost().getSubcatagory().getName(),
-                jobApplication.getJobPost().getCompany().getName());
->>>>>>> 837cf3d (debugging from integration, fixed many dto errors, added url search params)
+        return new ServiceResponse<JobApplicationResponse>(true, "", res);
+
     }
 
-    public List<AgentJobpostResponse> getJobposts(Integer salaryMin, Integer salaryMax,
+    public ServiceResponse<List<AgentJobpostResponse>> getJobposts(Integer salaryMin, Integer salaryMax,
             String date, String sort,
             String search,
             String applied, long userId) {
@@ -293,27 +259,16 @@ public class JobApplicationService {
         List<JobPost> posts = jobPostService.getAllJobpostObjects();
 
         if (search != null) {
-            System.out.println(search);
             posts.removeIf(post -> !(post.getJobName().toLowerCase().contains(search.toLowerCase()) ||
                     post.getCompany().getName().toLowerCase().contains(search.toLowerCase()) ||
-<<<<<<< HEAD
-                    ((post.getSubcatagory() != null)
-                            && post.getSubcatagory().getName().toLowerCase().contains(search.toLowerCase()))));
-        }
-        if (salaryMin != null && salaryMax != null) {
-            System.out.println("salary");
-            posts.removeIf(post -> (post.getSalary() < salaryMin || post.getSalary() > salaryMax));
-=======
                     post.getSubcatagory().getName().toLowerCase().contains(search.toLowerCase())));
         }
         if (salaryMin != null && salaryMax != null) {
             System.out.println("salary");
             posts.removeIf(post -> !(post.getSalary() < salaryMin || post.getSalary() > salaryMax));
->>>>>>> 837cf3d (debugging from integration, fixed many dto errors, added url search params)
         }
 
         if (date != null) {
-            System.out.println(date);
             LocalDate now = LocalDate.now();
             switch (date) {
                 case "Past 24 hours":
@@ -342,18 +297,15 @@ public class JobApplicationService {
         }
 
         if ("Latest Posts".equalsIgnoreCase(sort)) {
-            System.out.println(sort + "ghh");
             posts.sort(java.util.Comparator.comparing(JobPost::getDate).reversed());
         } else if ("Highest Salary".equalsIgnoreCase(sort)) {
-            System.out.println(sort);
-
             posts.sort(java.util.Comparator.comparing(JobPost::getSalary).reversed());
         }
 
         List<AgentJobpostResponse> responses = new ArrayList<>();
         Optional<Agent> agent = agentService.findAgentById(userId);
         if (!agent.isPresent()) {
-            throw new ObjectNotFound("agent", "id");
+            return new ServiceResponse<>(false, "Agent not found", null);
         }
         for (JobPost post : posts) {
             JobApplication app = jobApplicationRepo.findByAgentIdAndJobPostId(userId, post.getId());
@@ -384,34 +336,33 @@ public class JobApplicationService {
                 responses.add(response);
             }
         }
-<<<<<<< HEAD
 
-=======
->>>>>>> 837cf3d (debugging from integration, fixed many dto errors, added url search params)
-        return responses;
+        return new ServiceResponse<>(true, "", responses);
 
     }
 
-    public AgentJobpostResponse getJobPostById(Long id, long userId) {
+    public ServiceResponse<AgentJobpostResponse> getJobPostById(Long id, long userId) {
         JobPost post = jobPostService.getJobpostObject(id);
         if (post == null) {
-            return new AgentJobpostResponse();
+            return new ServiceResponse<>(false, "Post not found", null);
         }
         JobApplication app = jobApplicationRepo.findByAgentIdAndJobPostId(userId, post.getId());
+        AgentJobpostResponse res;
         if (app == null) {
-            return new AgentJobpostResponse(post.getId(), post.getDescription(),
+            res = new AgentJobpostResponse(post.getId(), post.getDescription(),
                     post.getCompany().getName(),
                     post.getCompany().getPhoneNumber(),
                     post.getJobName(), null, null,
                     post.getPeopleNeeded(), post.getSalary(), post.getDate(), false, -1);
         } else {
-            return new AgentJobpostResponse(post.getId(), post.getDescription(),
+            res = new AgentJobpostResponse(post.getId(), post.getDescription(),
                     post.getCompany().getName(),
                     post.getCompany().getPhoneNumber(),
                     post.getJobName(), null, null,
                     post.getPeopleNeeded(), post.getSalary(), post.getDate(), true, app.getId());
         }
 
+        return new ServiceResponse<>(true, "", res);
     }
 
 }

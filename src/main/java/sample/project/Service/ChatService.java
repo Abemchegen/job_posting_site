@@ -12,6 +12,7 @@ import lombok.RequiredArgsConstructor;
 import sample.project.DTO.request.ChatRequest;
 import sample.project.DTO.response.AgentResponse;
 import sample.project.DTO.response.CompanyResponse;
+import sample.project.DTO.response.ServiceResponse;
 import sample.project.DTO.response.UserResponse;
 import sample.project.ErrorHandling.Exception.AccessDenied;
 import sample.project.Model.Agent;
@@ -44,10 +45,14 @@ public class ChatService {
         return message;
     }
 
-    public List<UserResponse> getChatContacts(long id) {
-        UserResponse currentUser = userService.getUser(id);
-        List<String> usernames = chatRepo.findChatUsernames(currentUser.getEmail());
-        usernames.remove(currentUser.getEmail());
+    public ServiceResponse<List<UserResponse>> getChatContacts(long id) {
+        ServiceResponse<UserResponse> res = userService.getUser(id);
+        if (!res.isSuccess()) {
+            return new ServiceResponse<List<UserResponse>>(false, "User not found", null);
+        }
+
+        List<String> usernames = chatRepo.findChatUsernames(res.data.getEmail());
+        usernames.remove(res.data.getEmail());
         List<UserResponse> response = new ArrayList<>();
 
         for (String username : usernames) {
@@ -102,23 +107,29 @@ public class ChatService {
             }
         }
 
-        return response;
+        return new ServiceResponse<List<UserResponse>>(true, null, response);
     }
 
-    public List<ChatMessage> getChatHistory(long id, long otherid) {
-        UserResponse user = userService.getUser(id);
-        UserResponse otherUser = userService.getUser(otherid);
+    public ServiceResponse<List<ChatMessage>> getChatHistory(long id, long otherid) {
+        ServiceResponse<UserResponse> res = userService.getUser(id);
 
-        return chatRepo.findBySenderUsernameAndReceiverUsernameOrReceiverUsernameAndSenderUsernameOrderByDateAsc(
-                user.getEmail(), otherUser.getEmail(), user.getEmail(), otherUser.getEmail());
+        if (!res.isSuccess()) {
+            return new ServiceResponse<>(false, "User not found", null);
+        }
+        ServiceResponse<UserResponse> otherres = userService.getUser(otherid);
+
+        List<ChatMessage> response = chatRepo
+                .findBySenderUsernameAndReceiverUsernameOrReceiverUsernameAndSenderUsernameOrderByDateAsc(
+                        res.data.getEmail(), otherres.data.getEmail(), res.data.getEmail(), otherres.data.getEmail());
+
+        return new ServiceResponse<>(true, "", response);
     }
 
     public void deleteChat(long chatId) {
         chatRepo.deleteById(chatId);
     }
 
-    public UserResponse getUsertoChat(long userid) {
+    public ServiceResponse<UserResponse> getUsertoChat(long userid) {
         return userService.getUser(userid);
     }
-
 }

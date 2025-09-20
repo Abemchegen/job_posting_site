@@ -9,6 +9,7 @@ import lombok.RequiredArgsConstructor;
 import sample.project.DTO.request.CreateJobRequest;
 import sample.project.DTO.request.SubCatagoriesRequest;
 import sample.project.DTO.request.UpdateSubCatagoryRequest;
+import sample.project.DTO.response.ServiceResponse;
 import sample.project.DTO.request.UpdateJobRequest;
 import sample.project.DTO.request.UpdateSubCatagoriesRequest;
 import sample.project.Model.Job;
@@ -16,6 +17,7 @@ import sample.project.Service.JobService;
 
 import java.util.List;
 
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -33,51 +35,73 @@ public class JobController {
 
     @PostMapping("/addJob")
     @PreAuthorize("hasAnyRole('ADMIN', 'COMPANY')")
-    public ResponseEntity<Job> addJob(@Valid @RequestBody CreateJobRequest request) {
-        Job job = adminService.addJob(request);
-        return ResponseEntity.ok().body(job);
+    public ResponseEntity<?> addJob(@Valid @RequestBody CreateJobRequest request) {
+        ServiceResponse<Job> job = adminService.addJob(request);
+        if (!job.isSuccess()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(job.getMessage());
+        }
+        return ResponseEntity.ok().body(job.getData());
     }
 
     @PostMapping("/addSubcatagories")
     @PreAuthorize("hasAnyRole('ADMIN', 'COMPANY')")
-    public ResponseEntity<Job> addSubCatagories(@Valid @RequestBody SubCatagoriesRequest request) {
-        Job job = adminService.addSubCatagories(request);
-        return ResponseEntity.ok().body(job);
+    public ResponseEntity<?> addSubCatagories(@Valid @RequestBody SubCatagoriesRequest request) {
+        ServiceResponse<Job> job = adminService.addSubCatagories(request);
+        if (!job.isSuccess()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(job.getMessage());
+        }
+        return ResponseEntity.ok().body(job.getData());
     }
 
     @PostMapping("/removeSubcatagories")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<Job> removeSubCatagories(@Valid @RequestBody SubCatagoriesRequest request) {
-        Job job = adminService.removeSubCatagories(request);
-        return ResponseEntity.ok().body(job);
+    public ResponseEntity<?> removeSubCatagories(@Valid @RequestBody SubCatagoriesRequest request) {
+        ServiceResponse<Job> job = adminService.removeSubCatagories(request);
+        if (!job.isSuccess()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(job.getMessage());
+        }
+        return ResponseEntity.ok().body(job.getData());
     }
 
     @PostMapping("/updateSubcatagories")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<Job> updateSubCatagories(@Valid @RequestBody UpdateSubCatagoriesRequest request) {
-        Job job = adminService.updateSubCatagories(request);
-        return ResponseEntity.ok().body(job);
+    public ResponseEntity<?> updateSubCatagories(@Valid @RequestBody UpdateSubCatagoriesRequest request) {
+        ServiceResponse<Job> job = adminService.updateSubCatagories(request);
+        if (!job.isSuccess()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(job.getMessage());
+        }
+        return ResponseEntity.ok().body(job.getData());
     }
 
     @PostMapping("/updateSubcatagory")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<Job> updateSubCatagory(@Valid @RequestBody UpdateSubCatagoryRequest request) {
-        Job job = adminService.updateSubCatagory(request);
-        return ResponseEntity.ok().body(job);
+    public ResponseEntity<?> updateSubCatagory(@Valid @RequestBody UpdateSubCatagoryRequest request) {
+        ServiceResponse<Job> job = adminService.updateSubCatagory(request);
+        if (!job.isSuccess()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(job.getMessage());
+        }
+        return ResponseEntity.ok().body(job.getData());
     }
 
     @PostMapping("/updateJobDetails")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<Job> updateJobDetails(@RequestBody UpdateJobRequest request) {
-        Job job = adminService.updateJobDetails(request);
-        return ResponseEntity.ok().body(job);
+    public ResponseEntity<?> updateJobDetails(@RequestBody UpdateJobRequest request) {
+        ServiceResponse<Job> job = adminService.updateJobDetails(request);
+        if (!job.isSuccess()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(job.getMessage());
+        }
+        return ResponseEntity.ok().body(job.getData());
     }
 
     @GetMapping("/{jobid}")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<Job> getJobById(@PathVariable Long jobid) {
-        Job job = adminService.getJobById(jobid);
-        return ResponseEntity.ok().body(job);
+    public ResponseEntity<?> getJobById(@PathVariable Long jobid) {
+        ServiceResponse<Job> job = adminService.getJobById(jobid);
+
+        if (!job.isSuccess()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(job.getMessage());
+        }
+        return ResponseEntity.ok().body(job.getData());
     }
 
     @GetMapping

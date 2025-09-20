@@ -5,15 +5,17 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
-import org.springframework.web.server.ResponseStatusException;
 
 import lombok.RequiredArgsConstructor;
 import sample.project.DTO.response.AgentJobpostResponse;
 import sample.project.DTO.response.JobApplicationResponse;
+import sample.project.DTO.response.ServiceResponse;
 import sample.project.Model.User;
 import sample.project.Service.JobApplicationService;
+import sample.project.Service.UserService;
 
 import java.util.List;
+import java.util.Optional;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -30,10 +32,11 @@ import org.springframework.web.bind.annotation.PostMapping;
 public class JobApplicationController {
 
     private final JobApplicationService jobApplicationService;
+    private final UserService userService;
 
     @GetMapping("/jobpost")
     @PreAuthorize("hasRole('AGENT')")
-    public ResponseEntity<List<AgentJobpostResponse>> getJobposts(
+    public ResponseEntity<?> getJobposts(
             @RequestParam(required = false) Integer salaryMin,
             @RequestParam(required = false) Integer salaryMax,
             @RequestParam(required = false) String date,
@@ -41,33 +44,63 @@ public class JobApplicationController {
             @RequestParam(required = false) String sort,
             @RequestParam(required = false) String applied,
             @AuthenticationPrincipal User currentUser) {
-        List<AgentJobpostResponse> posts = jobApplicationService.getJobposts(salaryMin, salaryMax, date, sort, search,
-                applied, currentUser.getId());
-        return ResponseEntity.ok().body(posts);
+
+        Optional<User> user = userService.getUserByEmail(currentUser.getEmail());
+
+        if (!user.isPresent()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("User not found");
+        }
+
+        ServiceResponse<List<AgentJobpostResponse>> posts = jobApplicationService.getJobposts(salaryMin, salaryMax,
+                date, sort, search,
+                applied, user.get().getId());
+
+        if (!posts.isSuccess()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(posts.getMessage());
+        }
+        return ResponseEntity.ok().body(posts.getData());
     }
 
     @GetMapping("/jobpost/{id}")
     @PreAuthorize("hasRole('AGENT')")
 
-    public ResponseEntity<AgentJobpostResponse> getJobPostById(@PathVariable Long id,
+    public ResponseEntity<?> getJobPostById(@PathVariable Long id,
             @AuthenticationPrincipal User currentUser) {
-        AgentJobpostResponse jobPost = jobApplicationService.getJobPostById(id, currentUser.getId());
 
-        return ResponseEntity.ok().body(jobPost);
+        Optional<User> user = userService.getUserByEmail(currentUser.getEmail());
+
+        if (!user.isPresent()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("User not found");
+        }
+
+        ServiceResponse<AgentJobpostResponse> jobPost = jobApplicationService.getJobPostById(id, user.get().getId());
+        if (!jobPost.isSuccess()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(jobPost.getMessage());
+        }
+
+        return ResponseEntity.ok().body(jobPost.getData());
 
     }
 
     @PostMapping("/{jobPostID}/apply")
     @PreAuthorize("hasRole('AGENT')")
-    public ResponseEntity<JobApplicationResponse> apply(@RequestParam("coverLetter") String coverLetter,
+    public ResponseEntity<?> apply(@RequestParam("coverLetter") String coverLetter,
             @RequestParam(value = "file", required = false) MultipartFile file,
             @PathVariable long jobPostID,
             @AuthenticationPrincipal User currentUser) {
 
-        JobApplicationResponse application = jobApplicationService.apply(coverLetter, file, currentUser.getId(),
+        Optional<User> user = userService.getUserByEmail(currentUser.getEmail());
+        if (!user.isPresent()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("User not found");
+        }
+        ServiceResponse<JobApplicationResponse> application = jobApplicationService.apply(coverLetter, file,
+                user.get().getId(),
                 jobPostID);
 
-        return ResponseEntity.ok().body(application);
+        if (!application.isSuccess()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(application.getMessage());
+        }
+        return ResponseEntity.ok().body(application.getData());
     }
 
     @DeleteMapping("/{applicationid}")
@@ -75,13 +108,19 @@ public class JobApplicationController {
     public ResponseEntity<String> delete(@PathVariable long applicationid,
             @AuthenticationPrincipal User currentUser) {
 
-        JobApplicationResponse application = jobApplicationService.findById(applicationid);
+        Optional<User> user = userService.getUserByEmail(currentUser.getEmail());
 
-        if (application.getUserInfo().getId() != currentUser.getId()) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Access denied");
-
+        if (!user.isPresent()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("User not found");
         }
+        ServiceResponse<JobApplicationResponse> application = jobApplicationService.findById(applicationid);
 
+        if (!application.isSuccess()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Job application not found");
+        }
+        if (application.getData().getUserInfo().getId() != user.get().getId()) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Access Denied");
+        }
         jobApplicationService.delete(applicationid);
 
         return ResponseEntity.ok().body("Job application successfully deleted.");
@@ -89,26 +128,38 @@ public class JobApplicationController {
 
     @PostMapping("/update/{applicationid}")
     @PreAuthorize("hasRole('AGENT')")
-    public ResponseEntity<JobApplicationResponse> update(@RequestPart("coverLetter") String coverLetter,
+    public ResponseEntity<?> update(@RequestPart("coverLetter") String coverLetter,
             @RequestPart(value = "file", required = false) MultipartFile file,
             @PathVariable long applicationid,
             @AuthenticationPrincipal User currentUser) {
 
-        JobApplicationResponse existingapplication = jobApplicationService.findById(applicationid);
+        Optional<User> user = userService.getUserByEmail(currentUser.getEmail());
 
-        if (existingapplication.getUserInfo().getId() != currentUser.getId()) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Access denied");
-
+        if (!user.isPresent()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("User not found");
         }
 
-        JobApplicationResponse application = jobApplicationService.update(applicationid, coverLetter, file);
+        ServiceResponse<JobApplicationResponse> existingapplication = jobApplicationService.findById(applicationid);
 
-        return ResponseEntity.ok().body(application);
+        if (!existingapplication.isSuccess()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Job application not found");
+        }
+
+        if (existingapplication.getData().getUserInfo().getId() != user.get().getId()) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Access Denied");
+        }
+
+        ServiceResponse<JobApplicationResponse> application = jobApplicationService.update(applicationid, coverLetter,
+                file);
+        if (!application.isSuccess()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(application.getMessage());
+        }
+        return ResponseEntity.ok().body(application.getData());
     }
 
     @GetMapping
     @PreAuthorize("hasRole('AGENT')")
-    public ResponseEntity<List<JobApplicationResponse>> getJobApplications(
+    public ResponseEntity<?> getJobApplications(
             @RequestParam(required = false) Integer salaryMin,
             @RequestParam(required = false) Integer salaryMax,
             @RequestParam(required = false) String date,
@@ -117,6 +168,10 @@ public class JobApplicationController {
             @RequestParam(required = false) String sort,
             @AuthenticationPrincipal User currentUser) {
 
+        Optional<User> user = userService.getUserByEmail(currentUser.getEmail());
+        if (!user.isPresent()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("User not found");
+        }
         List<JobApplicationResponse> application = jobApplicationService.findAllApplications(salaryMin, salaryMax, date,
                 sort, search, status,
                 currentUser.getId());
@@ -126,15 +181,20 @@ public class JobApplicationController {
 
     @GetMapping("/{applicationID}")
     @PreAuthorize("hasRole('AGENT')")
-    public ResponseEntity<JobApplicationResponse> getAJobApplicationById(@PathVariable long applicationID,
+    public ResponseEntity<?> getAJobApplicationById(@PathVariable long applicationID,
             @AuthenticationPrincipal User currentUser) {
 
-        JobApplicationResponse application = jobApplicationService.findById(applicationID);
-
-        if (application.getUserInfo().getId() != currentUser.getId()) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Access denied");
+        Optional<User> user = userService.getUserByEmail(currentUser.getEmail());
+        if (!user.isPresent()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("User not found");
         }
-
-        return ResponseEntity.ok().body(application);
+        ServiceResponse<JobApplicationResponse> application = jobApplicationService.findById(applicationID);
+        if (!application.isSuccess()) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(application.getMessage());
+        }
+        if (application.getData().getUserInfo().getId() != user.get().getId()) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Access Denied");
+        }
+        return ResponseEntity.ok().body(application.getData());
     }
 }

@@ -7,11 +7,13 @@ import lombok.RequiredArgsConstructor;
 import sample.project.DTO.request.CompanyUpdateRequest;
 import sample.project.DTO.response.CompanyUpdateResponse;
 import sample.project.DTO.response.JobpostResponse;
+import sample.project.DTO.response.ServiceResponse;
 import sample.project.Model.User;
 import sample.project.Service.CompanyService;
 
 import java.util.List;
 
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -28,17 +30,30 @@ public class CompanyController {
 
     @PutMapping("/updateDetails")
     @PreAuthorize("hasRole('COMPANY')")
-    public ResponseEntity<CompanyUpdateResponse> changeCompanyDetails(@RequestBody CompanyUpdateRequest req,
+
+    public ResponseEntity<?> changeCompanyDetails(@RequestBody CompanyUpdateRequest req,
             @AuthenticationPrincipal User currentUser) {
-        CompanyUpdateResponse response = companyService.changeCompanyDetails(req, currentUser.getCompany().getId());
-        return ResponseEntity.ok().body(response);
+
+        ServiceResponse<CompanyUpdateResponse> response = companyService.changeCompanyDetails(req,
+                currentUser.getCompany().getId());
+
+        if (!response.isSuccess()) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(response.getData());
+        }
+        return ResponseEntity.ok().body(response.getData());
     }
 
     @GetMapping("getJobPosts")
-    public ResponseEntity<List<JobpostResponse>> getAllJobPostsFromACompany(@AuthenticationPrincipal User currentUser) {
-        List<JobpostResponse> jobPosts = companyService.getAllJobPostsFromACompany(currentUser.getCompany().getId());
+    public ResponseEntity<?> getAllJobPostsFromACompany(@AuthenticationPrincipal User currentUser) {
 
-        return ResponseEntity.ok().body(jobPosts);
+        ServiceResponse<List<JobpostResponse>> response = companyService
+                .getAllJobPostsFromACompany(currentUser.getCompany().getId());
+
+        if (!response.isSuccess()) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(response.getData());
+        }
+
+        return ResponseEntity.ok().body(response.getData());
 
     }
 

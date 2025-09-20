@@ -46,20 +46,20 @@ public class JwtService {
         return claimsResolver.apply(claims);
     }
 
-    public String generateToken(Map<String, Object> extraClaims, User user) {
+    public String generateToken(Map<String, Object> extraClaims, User user, Integer expiry) {
 
         return Jwts.builder()
                 .claims(extraClaims)
                 .subject(String.valueOf(user.getId()))
                 .issuedAt(new Date(System.currentTimeMillis()))
-                .expiration(new Date(System.currentTimeMillis() + 1000 * 60 * 60 * 24))
+                .expiration(new Date(System.currentTimeMillis() + 1000 * 60 * 60 * expiry))
                 .signWith(getSignInKey())
                 .compact();
 
     }
 
-    public String generateToken(User user) {
-        return generateToken(new HashMap<>(), user);
+    public String generateToken(User user, Integer expiry) {
+        return generateToken(new HashMap<>(), user, expiry);
     }
 
     public boolean isTokenValid(String token, User user) {

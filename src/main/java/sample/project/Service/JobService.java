@@ -12,11 +12,10 @@ import sample.project.DTO.request.CreateJobRequest;
 import sample.project.DTO.request.SubCatagoriesRequest;
 import sample.project.DTO.request.UpdateSubCatagoryRequest;
 import sample.project.DTO.request.UpdateSubcat;
+import sample.project.DTO.response.ServiceResponse;
 import sample.project.DTO.request.Subcat;
 import sample.project.DTO.request.UpdateJobRequest;
 import sample.project.DTO.request.UpdateSubCatagoriesRequest;
-import sample.project.ErrorHandling.Exception.ObjectAlreadyExists;
-import sample.project.ErrorHandling.Exception.ObjectNotFound;
 import sample.project.Model.Job;
 import sample.project.Model.Subcatagory;
 import sample.project.Repo.JobRepo;
@@ -27,10 +26,10 @@ public class JobService {
 
     private final JobRepo jobRepo;
 
-    public Job addJob(CreateJobRequest request) {
+    public ServiceResponse<Job> addJob(CreateJobRequest request) {
         Optional<Job> optionalJob = jobRepo.findByName(request.name());
         if (optionalJob.isPresent()) {
-            throw new ObjectAlreadyExists("Job", "name");
+            return new ServiceResponse<Job>(false, "Job not found", null);
         }
 
         Job job = new Job();
@@ -49,16 +48,17 @@ public class JobService {
 
         }
         job.setSubcatagory(subcatagories);
-        return jobRepo.save(job);
+        Job j = jobRepo.save(job);
+        return new ServiceResponse<Job>(true, "", j);
 
     }
 
     @Transactional
-    public Job addSubCatagories(SubCatagoriesRequest request) {
+    public ServiceResponse<Job> addSubCatagories(SubCatagoriesRequest request) {
 
         Optional<Job> optionalJob = jobRepo.findByName(request.jobName());
         if (!optionalJob.isPresent()) {
-            throw new ObjectNotFound("Job", "name");
+            return new ServiceResponse<Job>(false, "Job not found", null);
         }
 
         Job job = optionalJob.get();
@@ -80,16 +80,16 @@ public class JobService {
                 subcatagories.add(sub);
             }
         }
-        return job;
+        return new ServiceResponse<Job>(true, "", job);
 
     }
 
     @Transactional
-    public Job removeSubCatagories(SubCatagoriesRequest request) {
+    public ServiceResponse<Job> removeSubCatagories(SubCatagoriesRequest request) {
 
         Optional<Job> optionalJob = jobRepo.findByName(request.jobName());
         if (!optionalJob.isPresent()) {
-            throw new ObjectNotFound("Job", "name");
+            return new ServiceResponse<Job>(false, "Job not found", null);
         }
 
         Job job = optionalJob.get();
@@ -108,16 +108,16 @@ public class JobService {
             }
         }
         job.setSubcatagory(subcatagories);
-        return job;
+        return new ServiceResponse<Job>(true, "", job);
 
     }
 
     @Transactional
-    public Job updateSubCatagories(UpdateSubCatagoriesRequest request) {
+    public ServiceResponse<Job> updateSubCatagories(UpdateSubCatagoriesRequest request) {
 
         Optional<Job> optionalJob = jobRepo.findByName(request.jobName());
         if (!optionalJob.isPresent()) {
-            throw new ObjectNotFound("Job", "name");
+            return new ServiceResponse<Job>(false, "Job not found", null);
         }
 
         Job job = optionalJob.get();
@@ -136,7 +136,7 @@ public class JobService {
                     boolean nameExists = subcatagories.stream()
                             .anyMatch(s -> s.getName().equalsIgnoreCase(newSubcat.updatedName()));
                     if (nameExists) {
-                        throw new ObjectAlreadyExists("Subcatagory", "name");
+                        return new ServiceResponse<Job>(false, "Subcatagory with this name already exists", null);
                     }
                 }
 
@@ -145,15 +145,15 @@ public class JobService {
             }
         }
         job.setSubcatagory(subcatagories);
-        return job;
+        return new ServiceResponse<Job>(true, "", job);
 
     }
 
     @Transactional
-    public Job updateSubCatagory(UpdateSubCatagoryRequest request) {
+    public ServiceResponse<Job> updateSubCatagory(UpdateSubCatagoryRequest request) {
         Optional<Job> optionalJob = jobRepo.findByName(request.jobName());
         if (!optionalJob.isPresent()) {
-            throw new ObjectNotFound("Job", "name");
+            return new ServiceResponse<Job>(false, "Job not found", null);
         }
 
         Job job = optionalJob.get();
@@ -167,7 +167,7 @@ public class JobService {
                     boolean nameExists = subcatagories.stream()
                             .anyMatch(s -> s.getName().equalsIgnoreCase(newSubcat.updatedName()));
                     if (nameExists) {
-                        throw new ObjectAlreadyExists("Subcatagory", "name");
+                        return new ServiceResponse<Job>(false, "Subcatagory with this name already exists", null);
                     }
                     existing.setName(newSubcat.updatedName());
                 }
@@ -175,24 +175,22 @@ public class JobService {
                 break;
             }
         }
-
         job.setSubcatagory(subcatagories);
-        return job;
+        return new ServiceResponse<Job>(true, "", job);
     }
 
     @Transactional
-    public Job updateJobDetails(UpdateJobRequest request) {
+    public ServiceResponse<Job> updateJobDetails(UpdateJobRequest request) {
         Optional<Job> optionalJob = jobRepo.findByName(request.existingJobname());
         if (!optionalJob.isPresent() && request.existingJobname().equals(request.updatedJobName())) {
-            throw new ObjectNotFound("Job", "name");
+            return new ServiceResponse<Job>(false, "Job not found", null);
         }
 
         if (request.updatedJobName() != null && !request.existingJobname().equals(request.updatedJobName())) {
             Optional<Job> optionalUpdatedJob = jobRepo.findByName(request.updatedJobName());
             if (optionalUpdatedJob.isPresent()) {
-                throw new ObjectAlreadyExists("Job", "name");
+                return new ServiceResponse<Job>(false, "Job with this name already exists", null);
             }
-
         }
 
         Job job = optionalJob.get();
@@ -204,7 +202,7 @@ public class JobService {
             job.setDescription(request.description());
         }
 
-        return job;
+        return new ServiceResponse<Job>(true, null, job);
 
     }
 
@@ -220,14 +218,14 @@ public class JobService {
         return jobs;
     }
 
-    public Job getJobById(Long id) {
+    public ServiceResponse<Job> getJobById(Long id) {
         Optional<Job> optionalJob = jobRepo.findById(id);
 
         if (!optionalJob.isPresent()) {
-            throw new ObjectNotFound("Job", "id");
+            return new ServiceResponse<Job>(false, "Job not found", null);
         }
 
-        return optionalJob.get();
+        return new ServiceResponse<Job>(true, null, optionalJob.get());
     }
 
     public Optional<Job> getJob(String jobName) {

@@ -16,6 +16,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import sample.project.Auth.JwtService;
@@ -26,12 +27,11 @@ import sample.project.DTO.response.AgentResponse;
 import sample.project.DTO.response.CompanyResponse;
 import sample.project.DTO.response.LoginResponse;
 import sample.project.DTO.response.RegisterResponse;
+import sample.project.DTO.response.ServiceResponse;
 import sample.project.DTO.response.UserResponse;
 import sample.project.DTO.response.UserResponseList;
 import sample.project.ErrorHandling.Exception.AccessDenied;
-import sample.project.ErrorHandling.Exception.ObjectAlreadyExists;
 import sample.project.ErrorHandling.Exception.ObjectNotFound;
-import sample.project.ErrorHandling.Exception.RequiredFieldsEmpty;
 import sample.project.Model.Agent;
 import sample.project.Model.Company;
 import sample.project.Model.Cv;
@@ -51,31 +51,68 @@ public class UserService {
     private final CloudinaryService cloudinaryService;
     private final EmailService emailService;
 
+    public static ServiceResponse<UserResponse> generateResponse(User user) {
+        if (user.getCompany() != null) {
+            Company company = user.getCompany();
+            CompanyResponse res = CompanyResponse.builder()
+                    .id(user.getId())
+                    .birthdate(user.getBirthdate())
+                    .email(user.getEmail())
+                    .phonenumber(user.getPhonenumber())
+                    .name(user.getName())
+                    .role(user.getRole())
+                    .pfp(user.getPfpUrl())
+                    .companyId(company.getId())
+                    .companyName(company.getName())
+                    .companyPhonenumber(company.getPhoneNumber())
+                    .build();
+
+            return new ServiceResponse<UserResponse>(true, null, res);
+
+        } else if (user.getAgent() != null) {
+            Agent agent = user.getAgent();
+
+            AgentResponse res = AgentResponse.builder()
+                    .id(agent.getId())
+                    .birthdate(user.getBirthdate())
+                    .email(user.getEmail())
+                    .phonenumber(user.getPhonenumber())
+                    .name(user.getName())
+                    .role(user.getRole())
+                    .pfp(user.getPfpUrl())
+                    .cv(agent.getCv())
+                    .build();
+            return new ServiceResponse<UserResponse>(true, null, res);
+
+        } else if (user.getRole().toString().equals("ADMIN")) {
+            UserResponse res = UserResponse.builder().id(user.getId()).birthdate(user.getBirthdate())
+                    .email(user.getEmail())
+                    .phonenumber(user.getPhonenumber()).name(user.getName()).role(user.getRole()).build();
+            return new ServiceResponse<UserResponse>(true, null, res);
+
+        } else {
+            return new ServiceResponse<UserResponse>(false, "Access Denied", null);
+
+        }
+    }
+
     @Transactional
-    public void createUser(RegisterRequest req) {
+    public ServiceResponse<String> createUser(RegisterRequest req) {
+        String role = req.getRole();
 
-        if ((!req.getRole().equals("COMPANY")) && (!req.getRole().equals("AGENT"))) {
-            throw new AccessDenied();
-        }
-        if (req.getRole().equals("COMPANY")) {
-            if (req.getCompanyName() == null) {
-                throw new RequiredFieldsEmpty("Company", Collections.singletonList("Company name"));
-
-            } else if (req.getCompanyPhonenumber() == null) {
-                throw new RequiredFieldsEmpty("Company", Collections.singletonList("Company Phonenumber"));
-
-            }
+        if (!List.of("COMPANY", "AGENT").contains(role)) {
+            return new ServiceResponse<>(false, "Access Denied", null);
         }
 
-        Optional<User> exsistingUserEmail = getUserByEmail(req.getEmail());
-        if (exsistingUserEmail.isPresent()) {
-            throw new ObjectAlreadyExists("User", "email");
-        }
-        Optional<User> exsistingUserPhonenumber = getUserByPhonenumber(req.getPhonenumber());
-        if (exsistingUserPhonenumber.isPresent()) {
-            throw new ObjectAlreadyExists("User", "phonenumber");
-        }
+        Optional<User> euser = getUserByEmail(req.getEmail());
 
+        if (euser.isPresent()) {
+            return new ServiceResponse<>(false, "User by this email already exists", null);
+        }
+        Optional<User> puser = getUserByPhonenumber(req.getPhonenumber());
+        if (puser.isPresent()) {
+            return new ServiceResponse<>(false, "User by this phone number already exists", null);
+        }
         User user = new User();
         user.setName(req.getName());
         user.setEmail(req.getEmail());
@@ -99,6 +136,7 @@ public class UserService {
         if (req.getRole().toString().equals("AGENT")) {
             agentService.addAgent(savedUser);
         }
+        return new ServiceResponse<String>(true, null, "Register Successful");
     }
 
     public UserResponse getUser(Long id) {
@@ -158,22 +196,23 @@ public class UserService {
 
     }
 
-    public LoginResponse login(LoginRequest req) {
+    public ServiceResponse<LoginResponse> login(LoginRequest req) {
         Authentication authentication = authenticationManager
                 .authenticate(new UsernamePasswordAuthenticationToken(req.email(), req.password()));
 
         if (authentication.isAuthenticated()) {
             Optional<User> optionalUser = getUserByEmail(req.email());
             if (!optionalUser.isPresent()) {
-                return new LoginResponse(null, null, null, "User doesn't exist");
+                return new ServiceResponse<>(false, "User not found", null);
             }
             User user = optionalUser.get();
 
             if (!user.isEnabled()) {
                 resendCode(req.email());
-                return new LoginResponse(null, null, null, "Please verify your email before logging in");
+                return new ServiceResponse<>(false, "Email not verified", null);
             }
-            String token = jwtService.generateToken(user);
+            String accessToken = jwtService.generateToken(user, 1);
+            String refreshToken = jwtService.generateToken(user, 24);
             UserResponse resp;
             if (user.getRole().toString().equals("AGENT")) {
                 resp = AgentResponse.builder()
@@ -211,14 +250,46 @@ public class UserService {
                         .role(user.getRole())
                         .build();
             }
-            return new LoginResponse(user.getId(), token, resp, "Login Successfull");
+
+            LoginResponse response = new LoginResponse(user.getId(), accessToken, refreshToken, resp,
+                    "Login Successfull");
+            return new ServiceResponse<>(true, "", response);
 
         } else {
-            return new LoginResponse(null, null, null, "Login Failure");
+            return new ServiceResponse<>(false, "Login Failed", null);
         }
     }
 
-    public UserResponseList getAllUser(String role, String search) {
+    public ServiceResponse<UserResponse> getUser(String email) {
+        Optional<User> user = userRepo.findByEmail(email);
+
+        if (!user.isPresent()) {
+            return new ServiceResponse<>(false, "User not found", null);
+        }
+
+        ServiceResponse<UserResponse> res = generateResponse(user.get());
+
+        if (!res.isSuccess()) {
+            return new ServiceResponse<>(false, res.getMessage(), null);
+        }
+
+        return new ServiceResponse<>(true, "", res.getData());
+
+    }
+
+    public ServiceResponse<UserResponse> getUser(long id) {
+        Optional<User> user = userRepo.findById(id);
+        if (!user.isPresent()) {
+            return new ServiceResponse<>(false, "User not found", null);
+        }
+        ServiceResponse<UserResponse> res = generateResponse(user.get());
+        if (!res.isSuccess()) {
+            return new ServiceResponse<>(false, res.getMessage(), null);
+        }
+        return new ServiceResponse<>(true, "", res.getData());
+    }
+
+    public ServiceResponse<UserResponseList> getAllUser(String role, String search) {
         List<User> users = userRepo.findAll();
 
         if (search != null) {
@@ -287,10 +358,15 @@ public class UserService {
                 responseList.add(response);
             }
 
+            ServiceResponse<UserResponse> response = generateResponse(user);
+            if (!response.isSuccess()) {
+                return new ServiceResponse<>(false, response.getMessage(), null);
+            }
+            responseList.add(response.getData());
         }
 
-        return new UserResponseList(responseList);
-
+        UserResponseList list = new UserResponseList(responseList);
+        return new ServiceResponse<>(true, "", list);
     }
 
     public Optional<User> getUserByEmail(String email) {
@@ -303,24 +379,29 @@ public class UserService {
     }
 
     @Transactional
-    public UserResponse updateUser(RegisterRequest req, Long id) {
+    public ServiceResponse<UserResponse> updateUser(RegisterRequest req, Long id) {
 
-        User user = userRepo.findById(id)
-                .orElseThrow(() -> new ObjectNotFound("Users", "id"));
+        Optional<User> opuser = userRepo.findById(id);
+
+        if (!opuser.isPresent()) {
+            return new ServiceResponse<UserResponse>(false, "User not found", null);
+        }
 
         // check if another user with the same credentials as the update already exsists
         // in the database.
 
         Optional<User> exsistingUserEmail = getUserByEmail(req.getEmail());
-        if (exsistingUserEmail.isPresent() && !exsistingUserEmail.get().getEmail().equals(user.getEmail())) {
-            throw new ObjectAlreadyExists("User", "email");
+        if (exsistingUserEmail.isPresent() && !exsistingUserEmail.get().getEmail().equals(opuser.get().getEmail())) {
+            return new ServiceResponse<UserResponse>(false, "User with this email exists", null);
         }
 
         Optional<User> exsistingUserPhonenumber = getUserByPhonenumber(req.getPhonenumber());
         if (exsistingUserPhonenumber.isPresent()
-                && !exsistingUserPhonenumber.get().getPhonenumber().equals(user.getPhonenumber())) {
-            throw new ObjectAlreadyExists("User", "phonenumber");
+                && !exsistingUserPhonenumber.get().getPhonenumber().equals(opuser.get().getPhonenumber())) {
+            return new ServiceResponse<UserResponse>(false, "User with this phone number exists", null);
         }
+
+        User user = opuser.get();
 
         if (req.getName() != null) {
             user.setName(req.getName());
@@ -338,57 +419,19 @@ public class UserService {
             user.setPhonenumber(req.getPhonenumber());
         }
 
-        String companyName = null;
-        String companyPhonenumber = null;
-        Cv cv = null;
-        Long companyID = null;
-        if (user.getCompany() != null) {
-            Company company = user.getCompany();
-            companyName = company.getName();
-            companyPhonenumber = company.getPhoneNumber();
-            companyID = company.getId();
-            return CompanyResponse.builder()
-                    .id(user.getId())
-                    .birthdate(user.getBirthdate())
-                    .email(user.getEmail())
-                    .phonenumber(user.getPhonenumber())
-                    .name(user.getName())
-                    .role(user.getRole())
-                    .pfp(user.getPfpUrl())
-                    .companyId(companyID)
-                    .companyName(companyName)
-                    .companyPhonenumber(companyPhonenumber)
-                    .build();
-
+        ServiceResponse<UserResponse> res = generateResponse(user);
+        if (!res.isSuccess()) {
+            return new ServiceResponse<>(false, res.getMessage(), null);
         }
 
-        else if (user.getAgent() != null) {
-            Agent agent = user.getAgent();
-            cv = agent.getCv();
-
-            return AgentResponse.builder()
-                    .id(agent.getId())
-                    .birthdate(user.getBirthdate())
-                    .email(user.getEmail())
-                    .phonenumber(user.getPhonenumber())
-                    .name(user.getName())
-                    .role(user.getRole())
-                    .pfp(user.getPfpUrl())
-                    .cv(cv)
-                    .build();
-        } else if (user.getRole().toString().equals("ADMIN")) {
-            return UserResponse.builder().id(user.getId()).birthdate(user.getBirthdate()).email(user.getEmail())
-                    .phonenumber(user.getPhonenumber()).name(user.getName()).role(user.getRole()).build();
-        } else {
-            throw new AccessDenied();
-        }
+        return new ServiceResponse<UserResponse>(true, "", res.getData());
 
     }
 
-    public void deleteUser(Long id) {
+    public ServiceResponse<String> deleteUser(Long id) {
         Optional<User> optionalUser = userRepo.findById(id);
         if (!optionalUser.isPresent()) {
-            throw new ObjectNotFound("User", "id");
+            return new ServiceResponse<String>(false, "User not found", null);
         }
 
         User user = optionalUser.get();
@@ -397,14 +440,15 @@ public class UserService {
         }
 
         userRepo.deleteById(id);
+        return new ServiceResponse<String>(true, "User Deleted", null);
 
     }
 
     @Transactional
-    public String uploadProfileImage(long id, MultipartFile file) {
+    public ServiceResponse<String> uploadProfileImage(long id, MultipartFile file) {
         Optional<User> optionalUser = userRepo.findById(id);
         if (!optionalUser.isPresent()) {
-            throw new ObjectNotFound("User", "id");
+            return new ServiceResponse<String>(false, "User not found", null);
         }
         User user = optionalUser.get();
         String oldPfpUrl = user.getPfpUrl();
@@ -414,9 +458,8 @@ public class UserService {
                 cloudinaryService.deleteFile(oldPfpUrl, true);
 
             } catch (Exception e) {
-                e.printStackTrace(); // This prints the full stack trace to your logs
-                throw new RuntimeException("profile picture delete failed, image not uploaded" + e.getMessage());
-
+                System.out.println(e.getMessage());
+                return new ServiceResponse<String>(false, "profile picture delete failed, image not uploaded. ", null);
             }
         }
 
@@ -424,50 +467,53 @@ public class UserService {
         try {
             pfp = cloudinaryService.uploadFile(file, true);
         } catch (IOException e) {
-            return "";
+            return new ServiceResponse<String>(false, "image uploaded failed.", null);
         }
         user.setPfpUrl(pfp);
-        return pfp;
+        return new ServiceResponse<String>(true, "", pfp);
 
     }
 
     @Transactional
-    public void deletePfp(long userid) {
+    public ServiceResponse<String> deletePfp(long userid) {
         Optional<User> optionalUser = userRepo.findById(userid);
         if (!optionalUser.isPresent()) {
-            throw new ObjectNotFound("User", "id");
+            return new ServiceResponse<String>(false, "User not found", null);
         }
         User user = optionalUser.get();
         user.setPfpUrl(null);
+        return new ServiceResponse<String>(true, "pfp deleted", null);
+
     }
 
     @Transactional
-    public void updateUserPassword(ChangePasswordRequest req, long userid) {
+    public ServiceResponse<String> updateUserPassword(ChangePasswordRequest req, long userid) {
         Optional<User> optionalUser = userRepo.findById(userid);
         if (!optionalUser.isPresent()) {
-            throw new ObjectNotFound("User", "id");
+            return new ServiceResponse<String>(false, "User not found", null);
         }
         User user = optionalUser.get();
         if (!passwordEncoder.matches(req.oldPassword(), user.getPassword())) {
-            throw new AccessDenied();
+            return new ServiceResponse<String>(false, "Credentials not correct", null);
         }
         user.setPassword(passwordEncoder.encode(req.newPassword()));
+        return new ServiceResponse<String>(true, "Password updated", null);
 
     }
 
     @Transactional
-    public RegisterResponse verifyEmail(String code, String email) {
+    public ServiceResponse<RegisterResponse> verifyEmail(String code, String email) {
 
         Optional<User> opUser = userRepo.findByEmail(email);
         if (!opUser.isPresent()) {
-            throw new ObjectNotFound("user", "email");
+            return new ServiceResponse<RegisterResponse>(false, "User not found", null);
         }
 
         User user = opUser.get();
 
         if (!code.equals(user.getVerificationCode()) ||
                 user.getEmailVerificationExpiry().isBefore(LocalDateTime.now())) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid or expired code");
+            return new ServiceResponse<RegisterResponse>(false, "Invalid Code", null);
         }
         if (!user.isEnabled()) {
             user.setEmailVerified(true);
@@ -476,49 +522,26 @@ public class UserService {
 
         }
 
-        String token = jwtService.generateToken(user);
-        UserResponse res = null;
+        String accessToken = jwtService.generateToken(user, 1);
+        String refreshToken = jwtService.generateToken(user, 1);
 
-        if (user.getCompany() != null) {
-            res = CompanyResponse.builder()
-                    .id(user.getId())
-                    .birthdate(user.getBirthdate())
-                    .email(user.getEmail())
-                    .phonenumber(user.getPhonenumber())
-                    .name(user.getName())
-                    .role(user.getRole())
-                    .pfp(user.getPfpUrl())
-                    .companyId(user.getCompany().getId())
-                    .companyName(user.getCompany().getName())
-                    .companyPhonenumber(user.getCompany().getPhoneNumber())
-                    .build();
+        ServiceResponse<UserResponse> res = generateResponse(user);
+
+        if (!res.isSuccess()) {
+            return new ServiceResponse<RegisterResponse>(false, "Verification failed", null);
+
         }
 
-        else if (user.getAgent() != null) {
-            Agent agent = user.getAgent();
-            res = AgentResponse.builder()
-                    .id(agent.getId())
-                    .birthdate(user.getBirthdate())
-                    .email(user.getEmail())
-                    .phonenumber(user.getPhonenumber())
-                    .name(user.getName())
-                    .role(user.getRole())
-                    .pfp(user.getPfpUrl())
-                    .cv(user.getAgent().getCv())
-                    .build();
-        } else if (user.getRole().toString().equals("ADMIN")) {
-            res = UserResponse.builder().id(user.getId()).birthdate(user.getBirthdate()).email(user.getEmail())
-                    .phonenumber(user.getPhonenumber()).name(user.getName()).role(user.getRole()).build();
-        }
+        RegisterResponse response = new RegisterResponse(user.getId(), accessToken, refreshToken, res.getData());
+        return new ServiceResponse<RegisterResponse>(true, "", response);
 
-        return new RegisterResponse(user.getId(), token, res);
     }
 
     @Transactional
-    public void resendCode(String email) {
+    public ServiceResponse<String> resendCode(String email) {
         Optional<User> opUser = userRepo.findByEmail(email);
         if (!opUser.isPresent()) {
-            throw new ObjectNotFound("user", "email");
+            return new ServiceResponse<String>(false, "User not found", null);
         }
 
         User user = opUser.get();
@@ -530,6 +553,25 @@ public class UserService {
         userRepo.save(user);
         emailService.sendMessage(user.getEmail(),
                 "Sira website verification code", "Your verification code " + code);
+
+        return new ServiceResponse<String>(true, "Code resent to email account",
+                null);
+
+    }
+
+    public ServiceResponse<LoginResponse> refreshToken(User user) {
+
+        String accessToken = jwtService.generateToken(user, 1);
+        String refreshToken = jwtService.generateToken(user, 400);
+
+        ServiceResponse<UserResponse> res = generateResponse(user);
+
+        if (!res.isSuccess()) {
+            return new ServiceResponse<LoginResponse>(false, "Refresh not successful", null);
+        }
+        LoginResponse regres = new LoginResponse(user.getId(), accessToken, refreshToken, res.getData(), "success");
+
+        return new ServiceResponse<LoginResponse>(true, "", regres);
     }
 
 }

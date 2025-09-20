@@ -1,23 +1,49 @@
-{"properties": [
-  {
-    "name": "jwt.signing.key",
-    "type": "java.lang.String",
-    "description": "my jwt signing key"
-  },
-  {
-    "name": "cloudinary.key",
-    "type": "java.lang.String",
-    "description": "My cloudinary account key"
-  },
-  {
-    "name": "cloudinary.secret",
-    "type": "java.lang.String",
-    "description": "My cloudinary account secret"
-  },
-
-  {
-    "name": "cloudinary.name",
-    "type": "java.lang.String",
-    "description": "My cloudinary collection mame"
-  }
-]}
+{
+  "properties": [
+    {
+      "name": "jwt.signing.key",
+      "type": "java.lang.String",
+      "description": "my jwt signing key"
+    },
+    {
+      "name": "cloudinary.key",
+      "type": "java.lang.String",
+      "description": "My cloudinary account key"
+    },
+    {
+      "name": "cloudinary.secret",
+      "type": "java.lang.String",
+      "description": "My cloudinary account secret"
+    },
+    {
+      "name": "cloudinary.name",
+      "type": "java.lang.String",
+      "description": "My cloudinary collection mame"
+    },
+    {
+      "name": "keycloak.resource",
+      "type": "java.lang.String",
+      "description": "The name of the username (principal ) We're using"
+    },
+    {
+      "name": "keycloak.realm",
+      "type": "java.lang.String",
+      "description": "Keyclock realm"
+    },
+    {
+      "name": "keycloak.auth-server-url",
+      "type": "java.lang.String",
+      "description": "The port keyclock is running in "
+    },
+    {
+      "name": "keycloak.credentials.secret",
+      "type": "java.lang.String",
+      "description": "Client Secret"
+    },
+    {
+      "name": "keycloak.client",
+      "type": "java.lang.String",
+      "description": "Keyclock client id"
+    }
+  ]
+}

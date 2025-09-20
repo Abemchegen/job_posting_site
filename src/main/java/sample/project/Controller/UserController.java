@@ -14,8 +14,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
-import org.springframework.web.server.ResponseStatusException;
 
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -24,7 +24,9 @@ import sample.project.DTO.request.LoginRequest;
 import sample.project.DTO.request.RegisterRequest;
 import sample.project.DTO.request.VerifyEmailRequest;
 import sample.project.DTO.response.LoginResponse;
+import sample.project.DTO.response.LoginResponseUser;
 import sample.project.DTO.response.RegisterResponse;
+import sample.project.DTO.response.ServiceResponse;
 import sample.project.DTO.response.UserResponse;
 import sample.project.DTO.response.UserResponseList;
 import sample.project.Model.User;
@@ -39,18 +41,53 @@ public class UserController {
 
     @PostMapping("/public")
     public ResponseEntity<String> createUser(@Valid @RequestBody RegisterRequest req) {
-        userService.createUser(req);
-
-        return ResponseEntity.ok().body("Register Successful");
+        ServiceResponse<String> res = userService.createUser(req);
+        if (!res.isSuccess()) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(res.getMessage());
+        }
+        return ResponseEntity.ok().body(res.getMessage());
     }
 
     @PostMapping("/public/login")
-    public ResponseEntity<UserResponse> login(@RequestBody LoginRequest req, HttpServletResponse response) {
-        LoginResponse loginResponse = userService.login(req);
-        String cookie = "jwt=" + loginResponse.token()
+    public ResponseEntity<?> login(@RequestBody LoginRequest req, HttpServletResponse response) {
+        ServiceResponse<LoginResponse> res = userService.login(req);
+        if (!res.isSuccess()) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(res.getMessage());
+        }
+        String cookie = "refreshtoken=" + res.getData().refresh_token() + "; Max-Age=86400; Path=/; HttpOnly; ";
+        response.setHeader("Set-Cookie", cookie);
+        LoginResponseUser resp = new LoginResponseUser(res.getData().access_token(), res.getData().response(),
+                res.getData().statusDesc());
+        return ResponseEntity.ok(resp);
+    }
+
+    @PostMapping("/public/verifyEmail")
+    public ResponseEntity<?> verifyEmail(@RequestBody VerifyEmailRequest req,
+            HttpServletResponse response) {
+        ServiceResponse<RegisterResponse> res = userService.verifyEmail(req.code(), req.email());
+        if (!res.isSuccess()) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(res.getMessage());
+        }
+        RegisterResponse resp = res.getData();
+        String cookie = "jwt=" + resp.refreshToken()
                 + "; Max-Age=86400; Path=/; HttpOnly; ";
         response.setHeader("Set-Cookie", cookie);
-        return ResponseEntity.ok(loginResponse.response());
+
+        return ResponseEntity.ok().body(resp.response());
+
+    }
+
+    @PostMapping("/refresh")
+    public ResponseEntity<?> refreshToken(@AuthenticationPrincipal User user, HttpServletResponse response) {
+        ServiceResponse<LoginResponse> res = userService.refreshToken(user);
+        if (!res.isSuccess()) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(res.getMessage());
+        }
+        String cookie = "refreshtoken=" + res.getData().refresh_token() + "; Max-Age=86400; Path=/; HttpOnly; ";
+        response.setHeader("Set-Cookie", cookie);
+        LoginResponseUser userres = new LoginResponseUser(res.getData().access_token(), res.getData().response(),
+                res.getData().statusDesc());
+        return ResponseEntity.ok().body(userres);
     }
 
     @GetMapping("/logout")
@@ -63,121 +100,118 @@ public class UserController {
 
     @GetMapping("/{userid}")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<UserResponse> getUser(@PathVariable long userid, @AuthenticationPrincipal User currentUser) {
+    public ResponseEntity<?> getUser(@PathVariable long userid, @AuthenticationPrincipal User user) {
 
-        UserResponse response = userService.getUser(userid);
-        return ResponseEntity.ok().body(response);
+        ServiceResponse<UserResponse> res = userService.getUser(userid);
+        if (!res.isSuccess()) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(res.getMessage());
+        }
+        return ResponseEntity.ok().body(res.getData());
     }
 
     @GetMapping("/auth/me")
-    public ResponseEntity<UserResponse> getMe(@AuthenticationPrincipal User currentUser) {
-        if (currentUser == null) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "User not authenticated");
+    public ResponseEntity<?> getMe(@AuthenticationPrincipal User user) {
+
+        ServiceResponse<UserResponse> res = userService.getUser(user.getEmail());
+        if (!res.isSuccess()) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(res.getMessage());
         }
-        UserResponse response = userService.getUser(currentUser.getId());
-        return ResponseEntity.ok().body(response);
-    }
-
-    @PostMapping("/public/verifyEmail")
-    public ResponseEntity<UserResponse> verifyEmail(@RequestBody VerifyEmailRequest req,
-            HttpServletResponse response) {
-        RegisterResponse registerResponse = userService.verifyEmail(req.code(), req.email());
-
-        String cookie = "jwt=" + registerResponse.token()
-                + "; Max-Age=86400; Path=/; HttpOnly; ";
-        response.setHeader("Set-Cookie", cookie);
-
-        return ResponseEntity.ok().body(registerResponse.response());
-
-    }
-
-    @GetMapping("/public/resendCode")
-    public ResponseEntity<String> resendCode(@RequestParam String email) {
-        userService.resendCode(email);
-        return ResponseEntity.ok().body("Code resent to email account");
+        return ResponseEntity.ok().body(res.getData());
     }
 
     @GetMapping
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<UserResponseList> getUsers(@RequestParam(required = false) String role,
+    public ResponseEntity<?> getUsers(@RequestParam(required = false) String role,
             @RequestParam(required = false) String search,
             @AuthenticationPrincipal User currentUser) {
 
-        UserResponseList response = userService.getAllUser(role, search);
-        return ResponseEntity.ok().body(response);
+        ServiceResponse<UserResponseList> res = userService.getAllUser(role, search);
+        if (!res.isSuccess()) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(res.getMessage());
+        }
+        return ResponseEntity.ok().body(res.getData());
 
     }
 
     @PutMapping("/{userid}")
     @PreAuthorize("hasAnyRole('AGENT', 'COMPANY', 'ADMIN')")
-    public ResponseEntity<UserResponse> updateUser(@PathVariable long userid, @RequestBody RegisterRequest req,
-            @AuthenticationPrincipal User currentUser) {
-        if (currentUser.getId() != userid) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN,
-                    "Access denied You can only update your own account");
+    public ResponseEntity<?> updateUser(@PathVariable long userid, @RequestBody RegisterRequest req,
+            @AuthenticationPrincipal User user) {
+
+        if (user.getId() != userid) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Access Denied");
         }
 
-        UserResponse response = userService.updateUser(req, userid);
-        return ResponseEntity.ok().body(response);
+        ServiceResponse<UserResponse> res = userService.updateUser(req, userid);
+        if (!res.isSuccess()) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(res.getMessage());
+        }
+        return ResponseEntity.ok().body(res.getData());
     }
 
     @PutMapping("updatePas/{userid}")
     @PreAuthorize("hasAnyRole('AGENT', 'COMPANY', 'ADMIN')")
     public ResponseEntity<String> updateUserPassword(@PathVariable long userid,
             @RequestBody ChangePasswordRequest req,
-            @AuthenticationPrincipal User currentUser) {
-        if (currentUser.getId() != userid) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN,
-                    "Access denied You can only update your own account");
+            @AuthenticationPrincipal User user) {
+
+        if (user.getId() != userid) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Access Denied");
         }
 
-        userService.updateUserPassword(req, userid);
-        return ResponseEntity.ok().body("Password updated successfully");
+        ServiceResponse<String> res = userService.updateUserPassword(req, userid);
+        if (!res.isSuccess()) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(res.getMessage());
+        }
+        return ResponseEntity.ok().body(res.getMessage());
     }
 
     @DeleteMapping("/{userid}")
     @PreAuthorize("hasAnyRole('AGENT', 'COMPANY', 'ADMIN')")
-    public ResponseEntity<String> deleteUser(@PathVariable long userid, @AuthenticationPrincipal User currentUser) {
+    public ResponseEntity<String> deleteUser(@PathVariable long userid, @AuthenticationPrincipal User user) {
 
-        if (currentUser.getId() != userid) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN,
-                    "Access denied You can only delete your own account");
+        if (user.getId() != userid) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Access Denied");
         }
 
-        userService.deleteUser(userid);
+        ServiceResponse<String> res = userService.deleteUser(userid);
+        if (!res.isSuccess()) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(res.getMessage());
+        }
 
-        return ResponseEntity.ok().body("User deleted successfully");
+        return ResponseEntity.ok().body(res.getMessage());
     }
 
     @PostMapping("/uploadImage/{userid}")
     @PreAuthorize("hasAnyRole('AGENT', 'COMPANY', 'ADMIN')")
     public ResponseEntity<String> uploadProfileImage(@RequestParam("file") MultipartFile file,
             @PathVariable long userid,
-            @AuthenticationPrincipal User currentUser) {
+            @AuthenticationPrincipal User user) {
 
-        if (currentUser.getId() != userid) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN,
-                    "Access denied You can only update your own profile picture");
+        if (user.getId() != userid) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Access Denied");
+
         }
 
-        String pfpurl = userService.uploadProfileImage(userid, file);
-        if (pfpurl == null) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Upload failed");
+        ServiceResponse<String> pfpurl = userService.uploadProfileImage(userid, file);
+        if (!pfpurl.isSuccess()) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(pfpurl.getMessage());
         }
-        return ResponseEntity.ok().body(pfpurl);
+        return ResponseEntity.ok().body(pfpurl.getData());
     }
 
     @DeleteMapping("deletePfp/{userid}")
     @PreAuthorize("hasAnyRole('AGENT', 'COMPANY', 'ADMIN')")
-    public ResponseEntity<String> deletePfp(@PathVariable long userid, @AuthenticationPrincipal User currentUser) {
+    public ResponseEntity<String> deletePfp(@PathVariable long userid, @AuthenticationPrincipal User user) {
 
-        if (currentUser.getId() != userid) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN,
-                    "Access denied You can only update your own profile picture");
+        if (user.getId() != userid) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Access Denied");
+
         }
-
-        userService.deletePfp(userid);
-        return ResponseEntity.ok().body("Deleted pfp");
+        ServiceResponse<String> res = userService.deletePfp(userid);
+        if (!res.isSuccess()) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(res.getMessage());
+        }
+        return ResponseEntity.ok().body(res.getMessage());
     }
-
 }

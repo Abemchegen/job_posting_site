@@ -12,8 +12,8 @@ import sample.project.DTO.request.JobPostRequest;
 import sample.project.DTO.request.UpdateJobPost;
 import sample.project.DTO.response.JobApplicationResponse;
 import sample.project.DTO.response.JobpostResponse;
+import sample.project.DTO.response.ServiceResponse;
 import sample.project.DTO.response.UserResponse;
-import sample.project.ErrorHandling.Exception.ObjectNotFound;
 import sample.project.Model.Agent;
 import sample.project.Model.Company;
 import sample.project.Model.Job;
@@ -33,30 +33,27 @@ public class JobPostService {
     private final JobService jobService;
     private final EmailService emailService;
 
-    public JobpostResponse postJob(JobPostRequest req) {
+    public ServiceResponse<JobpostResponse> postJob(JobPostRequest req) {
         Optional<Company> optionalCompany = companyService.getCompany(req.getCompanyName());
         if (!optionalCompany.isPresent()) {
-            throw new ObjectNotFound("Company", "name");
+            return new ServiceResponse<JobpostResponse>(false, "Company not found", null);
         }
-
         Optional<Job> optionalJob = jobService.getJob(req.getJobName());
         System.err.println(req.getJobName());
         if (!optionalJob.isPresent()) {
-            throw new ObjectNotFound("Job", "name");
+            return new ServiceResponse<JobpostResponse>(false, "Job not found", null);
         }
         Job job = optionalJob.get();
         Subcatagory subcatagory = null;
 
         if (req.getSubcatagoryName() != null) {
             List<Subcatagory> subcatagories = job.getSubcatagory();
-
             for (Subcatagory sub : subcatagories) {
                 if (sub.getName().equalsIgnoreCase(req.getSubcatagoryName())) {
                     subcatagory = sub;
                     break;
                 }
             }
-
         }
 
         JobPost jobPost = new JobPost();
@@ -80,20 +77,20 @@ public class JobPostService {
             res.setSubcatDesc(post.getSubcatagory().getDescription());
         }
 
-        return res;
+        return new ServiceResponse<JobpostResponse>(true, "", res);
 
     }
 
     @Transactional
-    public JobpostResponse updateJobPost(UpdateJobPost req, Long jobPostID) {
+    public ServiceResponse<JobpostResponse> updateJobPost(UpdateJobPost req, Long jobPostID) {
         Optional<JobPost> optionalJobPost = jobPostRepo.findById(jobPostID);
         if (!optionalJobPost.isPresent()) {
-            throw new ObjectNotFound("Job post", "id");
+            return new ServiceResponse<JobpostResponse>(false, "Job post not found", null);
         }
 
         Optional<Job> optionalJob = jobService.getJob(req.getJobName());
         if (!optionalJob.isPresent()) {
-            throw new ObjectNotFound("Job", "name");
+            return new ServiceResponse<JobpostResponse>(false, "Job not found", null);
         }
         Subcatagory subcatagory = null;
         if (req.getSubcatagoryName() != null) {
@@ -107,10 +104,11 @@ public class JobPostService {
             }
 
             if (subcatagory == null) {
-                throw new ObjectNotFound("subcatagory", "name");
+                return new ServiceResponse<JobpostResponse>(false, "Subcatagory not found", null);
             }
         }
         JobPost jobPost = optionalJobPost.get();
+        jobPost.setJobName(req.getJobName());
         jobPost.setSubcatagory(subcatagory);
         if (req.getDescription() != null) {
             jobPost.setDescription(req.getDescription());
@@ -136,24 +134,27 @@ public class JobPostService {
             response.setSubcatName(jobPost.getSubcatagory().getName());
             response.setSubcatDesc(jobPost.getSubcatagory().getDescription());
         }
-        return response;
+        return new ServiceResponse<>(true, "", response);
+
     }
 
-    public void deleteJobPost(Long id) {
+    public ServiceResponse<String> deleteJobPost(Long id) {
         Optional<JobPost> optionalJobPost = jobPostRepo.findById(id);
         if (!optionalJobPost.isPresent()) {
-            throw new ObjectNotFound("Job post", "id");
+            return new ServiceResponse<>(false, "Job post not found", null);
+
         }
 
         jobPostRepo.deleteById(id);
+        return new ServiceResponse<>(true, "Success", null);
+
     }
 
-    public JobpostResponse getJobPostById(Long id) {
+    public ServiceResponse<JobpostResponse> getJobPostById(Long id) {
         Optional<JobPost> optionalJobPost = jobPostRepo.findById(id);
         if (!optionalJobPost.isPresent()) {
-            throw new ObjectNotFound("Job post", "id");
+            return new ServiceResponse<JobpostResponse>(false, "Job post not found", null);
         }
-
         JobPost post = optionalJobPost.get();
 
         JobpostResponse res = new JobpostResponse(post.getId(), post.getDescription(), post.getCompany().getName(),
@@ -166,23 +167,24 @@ public class JobPostService {
             res.setSubcatDesc(post.getSubcatagory().getDescription());
         }
 
-        return res;
+        return new ServiceResponse<JobpostResponse>(true, null, res);
     }
 
-    public JobPost getJobPostObjectById(Long id) {
+    public ServiceResponse<JobPost> getJobPostObjectById(Long id) {
         Optional<JobPost> optionalJobPost = jobPostRepo.findById(id);
         if (!optionalJobPost.isPresent()) {
-            throw new ObjectNotFound("Job post", "id");
+            return new ServiceResponse<>(false, "Job post not found", null);
         }
 
-        return optionalJobPost.get();
+        return new ServiceResponse<>(true, "", optionalJobPost.get());
+
     }
 
-    public List<JobApplicationResponse> getJobApplications(Long id) {
+    public ServiceResponse<List<JobApplicationResponse>> getJobApplications(Long id) {
 
         Optional<JobPost> optionalJobPost = jobPostRepo.findById(id);
         if (!optionalJobPost.isPresent()) {
-            throw new ObjectNotFound("Job post", "id");
+            return new ServiceResponse<>(false, "Job post not found", null);
         }
 
         List<JobApplication> applications = optionalJobPost.get().getJobApplications();
@@ -208,26 +210,36 @@ public class JobPostService {
             }
             responses.add(response);
         }
-        return responses;
+        return new ServiceResponse<>(true, "", responses);
+
     }
 
-    public JobApplicationResponse getJobApplication(Long jobPostID, Long jobApplicationID) {
-        List<JobApplicationResponse> applications = getJobApplications(jobPostID);
+    public ServiceResponse<JobApplicationResponse> getJobApplication(Long jobPostID, Long jobApplicationID) {
+        ServiceResponse<List<JobApplicationResponse>> applications = getJobApplications(jobPostID);
 
-        for (JobApplicationResponse app : applications) {
+        if (!applications.isSuccess()) {
+            return new ServiceResponse<JobApplicationResponse>(false, applications.getMessage(), null);
+        }
+        for (JobApplicationResponse app : applications.getData()) {
             if (app.getJobApplicationID() == jobApplicationID) {
-                return app;
+                return new ServiceResponse<JobApplicationResponse>(true, null, app);
             }
         }
 
-        throw new ObjectNotFound("Job application", "id");
+        return new ServiceResponse<>(true, "Job application not found", null);
 
     }
 
     @Transactional
-    public JobApplicationResponse updateJobApplication(Long jobPostID, Long jobApplicationID,
+    public ServiceResponse<JobApplicationResponse> updateJobApplication(Long jobPostID, Long jobApplicationID,
             JobApplicationUpdateRequest req) {
-        JobApplication app = getJobApplicationObject(jobPostID, jobApplicationID);
+        ServiceResponse<JobApplication> appres = getJobApplicationObject(jobPostID, jobApplicationID);
+        if (!appres.isSuccess()) {
+            return new ServiceResponse<JobApplicationResponse>(false, "job application not found", null);
+        }
+
+        JobApplication app = appres.getData();
+
         app.setStatus(req.getStatus());
         Agent agent = app.getAgent();
         User user = agent.getUser();
@@ -248,71 +260,53 @@ public class JobPostService {
                 app.getJobPost().getId(),
                 app.getAppliedAt(), app.getCoverLetter(),
                 String.valueOf(app.getStatus()), app.getCvURL(), app.getJobPost().getJobName(),
-<<<<<<< HEAD
-                null,
-                app.getJobPost().getCompany().getName());
-
-        if (app.getJobPost().getSubcatagory() != null) {
-            res.setSubcatName(app.getJobPost().getSubcatagory().getName());
-        }
-
-        return res;
-
-=======
                 app.getJobPost().getSubcatagory().getName(),
                 app.getJobPost().getCompany().getName());
->>>>>>> 837cf3d (debugging from integration, fixed many dto errors, added url search params)
+        return new ServiceResponse<JobApplicationResponse>(true, "", res);
     }
 
-    private JobApplication getJobApplicationObject(Long jobPostID, Long jobApplicationID) {
+    private ServiceResponse<JobApplication> getJobApplicationObject(Long jobPostID, Long jobApplicationID) {
         Optional<JobPost> optionalJobPost = jobPostRepo.findById(jobPostID);
         if (!optionalJobPost.isPresent()) {
-            throw new ObjectNotFound("Job post", "id");
+            return new ServiceResponse<JobApplication>(false, "job post not found.", null);
         }
 
         List<JobApplication> applications = optionalJobPost.get().getJobApplications();
 
         for (JobApplication app : applications) {
             if (app.getId() == jobApplicationID) {
-                return app;
+                return new ServiceResponse<JobApplication>(true, null, app);
             }
         }
 
-        throw new ObjectNotFound("Job Application", "id");
+        return new ServiceResponse<JobApplication>(false, "job application not found.", null);
     }
 
-    public List<JobpostResponse> getAllJobPostsCompany(String name, Integer salaryMin, Integer salaryMax, String date,
+    public ServiceResponse<List<JobpostResponse>> getAllJobPostsCompany(String name, Integer salaryMin,
+            Integer salaryMax, String date,
             String sort, String search) {
         Optional<Company> optionalCompany = companyService.getCompany(name);
         if (!optionalCompany.isPresent()) {
-            throw new ObjectNotFound("Company", "name");
+            return new ServiceResponse<>(false, "Company not found", null);
+
         }
 
         Company company = optionalCompany.get();
         Optional<List<JobPost>> optionalResponses = jobPostRepo.findByCompany(company);
 
         if (!optionalResponses.isPresent()) {
-            return new ArrayList<JobpostResponse>();
+            return new ServiceResponse<>(false, "Job post not found", null);
         }
         List<JobPost> posts = optionalResponses.get();
 
         if (search != null) {
             System.out.println(search);
             posts.removeIf(post -> !(post.getJobName().toLowerCase().contains(search.toLowerCase()) ||
-<<<<<<< HEAD
-                    ((post.getSubcatagory() != null)
-                            && post.getSubcatagory().getName().toLowerCase().contains(search.toLowerCase()))));
-        }
-        if (salaryMin != null && salaryMax != null) {
-            System.out.println("salary");
-            posts.removeIf(post -> (post.getSalary() < salaryMin || post.getSalary() > salaryMax));
-=======
                     post.getSubcatagory().getName().toLowerCase().contains(search.toLowerCase())));
         }
         if (salaryMin != null && salaryMax != null) {
             System.out.println("salary");
             posts.removeIf(post -> !(post.getSalary() < salaryMin || post.getSalary() > salaryMax));
->>>>>>> 837cf3d (debugging from integration, fixed many dto errors, added url search params)
         }
 
         if (date != null) {
@@ -359,11 +353,11 @@ public class JobPostService {
 
             response.add(res);
         }
-<<<<<<< HEAD
+
         System.out.println(response);
-=======
->>>>>>> 837cf3d (debugging from integration, fixed many dto errors, added url search params)
-        return response;
+
+        return new ServiceResponse<>(true, "", response);
+
     }
 
     public List<JobPost> getAllJobpostObjects() {

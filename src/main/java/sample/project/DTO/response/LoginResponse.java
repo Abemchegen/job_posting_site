@@ -1,5 +1,6 @@
 package sample.project.DTO.response;
 
-public record LoginResponse(Long id, String token, UserResponse response, String statusDesc) {
+public record LoginResponse(Long id, String access_token, String refresh_token, UserResponse response,
+        String statusDesc) {
 
 }

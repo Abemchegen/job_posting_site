@@ -11,8 +11,7 @@ import lombok.RequiredArgsConstructor;
 import sample.project.DTO.request.CompanyUpdateRequest;
 import sample.project.DTO.response.CompanyUpdateResponse;
 import sample.project.DTO.response.JobpostResponse;
-import sample.project.ErrorHandling.Exception.ObjectAlreadyExists;
-import sample.project.ErrorHandling.Exception.ObjectNotFound;
+import sample.project.DTO.response.ServiceResponse;
 import sample.project.Model.Company;
 import sample.project.Model.JobPost;
 import sample.project.Repo.CompanyRepo;
@@ -40,34 +39,35 @@ public class CompanyService {
     }
 
     @Transactional
-    public CompanyUpdateResponse changeCompanyDetails(CompanyUpdateRequest req, long companyID) {
+    public ServiceResponse<CompanyUpdateResponse> changeCompanyDetails(CompanyUpdateRequest req, long companyID) {
         Optional<Company> optionalCompany = companyRepo.findById(companyID);
         if (!optionalCompany.isPresent()) {
-            throw new ObjectNotFound("Company", "id");
+            return new ServiceResponse<>(false, "Company not found", null);
         }
         Company company = optionalCompany.get();
         Optional<Company> optionalCompanyName = companyRepo.findByName(req.name());
 
         if (optionalCompanyName.isPresent() && !optionalCompanyName.get().getName().equals(company.getName())) {
-            throw new ObjectAlreadyExists("Company", "name");
+            return new ServiceResponse<>(false, "Company with this name already exists", null);
         }
         Optional<Company> optionalCompanyPhonenum = companyRepo.findByPhoneNumber(req.phonenumber());
 
         if (optionalCompanyPhonenum.isPresent()
                 && !optionalCompanyPhonenum.get().getPhoneNumber().equals(company.getPhoneNumber())) {
-            throw new ObjectAlreadyExists("Company", "phonenumber");
+            return new ServiceResponse<>(false, "Company with this phonenumber already exists", null);
         }
 
         if (req.name() != null) {
             company.setName(req.name());
-
         }
 
         if (req.phonenumber() != null) {
             company.setPhoneNumber(req.phonenumber());
         }
 
-        return new CompanyUpdateResponse(company.getId(), company.getName(), company.getPhoneNumber());
+        CompanyUpdateResponse res = new CompanyUpdateResponse(company.getId(), company.getName(),
+                company.getPhoneNumber());
+        return new ServiceResponse<>(true, "", res);
 
     }
 
@@ -79,11 +79,11 @@ public class CompanyService {
         return companyRepo.findById(companyID);
     }
 
-    public List<JobpostResponse> getAllJobPostsFromACompany(long companyID) {
+    public ServiceResponse<List<JobpostResponse>> getAllJobPostsFromACompany(long companyID) {
         Optional<Company> company = companyRepo.findById(companyID);
 
         if (!company.isPresent()) {
-            throw new ObjectNotFound("Company", "id");
+            return new ServiceResponse<>(false, "Company not found", null);
         }
 
         List<JobPost> post = company.get().getJobPosts();
@@ -97,7 +97,8 @@ public class CompanyService {
             responses.add(response);
         }
 
-        return responses;
+        return new ServiceResponse<>(true, "", responses);
+
     }
 
 }
