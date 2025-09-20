@@ -1,12 +1,10 @@
 package sample.project.Controller;
 
-import java.util.Map;
 import java.util.Optional;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.Authentication;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -19,7 +17,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
-import org.springframework.web.server.ResponseStatusException;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -28,12 +25,11 @@ import lombok.RequiredArgsConstructor;
 import sample.project.DTO.request.ChangePasswordRequest;
 import sample.project.DTO.request.LoginRequest;
 import sample.project.DTO.request.RegisterRequest;
-import sample.project.DTO.request.VerifyEmailRequest;
 import sample.project.DTO.response.LoginResponse;
 import sample.project.DTO.response.LoginResponseUser;
+import sample.project.DTO.response.ServiceResponse;
 import sample.project.DTO.response.UserResponse;
 import sample.project.DTO.response.UserResponseList;
-import sample.project.ErrorHandling.Exception.ObjectNotFound;
 import sample.project.Model.User;
 import sample.project.Service.UserService;
 
@@ -46,30 +42,36 @@ public class UserController {
 
     @PostMapping("/public")
     public ResponseEntity<String> createUser(@Valid @RequestBody RegisterRequest req) {
-        userService.createUser(req);
-
-        return ResponseEntity.ok().body("Register Successful");
+        ServiceResponse<String> res = userService.createUser(req);
+        if (!res.isSuccess()) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(res.getMessage());
+        }
+        return ResponseEntity.ok().body(res.getMessage());
     }
 
     @PostMapping("/public/login")
-    public ResponseEntity<LoginResponseUser> login(@RequestBody LoginRequest req, HttpServletResponse response) {
-        LoginResponse loginResponse = userService.login(req);
-        if (loginResponse.access_token() == null) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+    public ResponseEntity<?> login(@RequestBody LoginRequest req, HttpServletResponse response) {
+        ServiceResponse<LoginResponse> res = userService.login(req);
+        if (!res.isSuccess()) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(res.getMessage());
         }
-        String cookie = "refreshtoken=" + loginResponse.refresh_token() + "; Max-Age=86400; Path=/; HttpOnly; ";
+        String cookie = "refreshtoken=" + res.getData().refresh_token() + "; Max-Age=86400; Path=/; HttpOnly; ";
         response.setHeader("Set-Cookie", cookie);
-        LoginResponseUser res = new LoginResponseUser(loginResponse.access_token(), loginResponse.response(),
-                loginResponse.statusDesc());
-        return ResponseEntity.ok(res);
+        LoginResponseUser resp = new LoginResponseUser(res.getData().access_token(), res.getData().response(),
+                res.getData().statusDesc());
+        return ResponseEntity.ok(resp);
     }
 
     @PostMapping("/public/refresh")
-    public ResponseEntity<LoginResponseUser> refreshToken(HttpServletRequest request, HttpServletResponse response) {
-        LoginResponse res = userService.refreshToken(request);
-        String cookie = "refreshtoken=" + res.refresh_token() + "; Max-Age=86400; Path=/; HttpOnly; ";
+    public ResponseEntity<?> refreshToken(HttpServletRequest request, HttpServletResponse response) {
+        ServiceResponse<LoginResponse> res = userService.refreshToken(request);
+        if (!res.isSuccess()) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(res.getMessage());
+        }
+        String cookie = "refreshtoken=" + res.getData().refresh_token() + "; Max-Age=86400; Path=/; HttpOnly; ";
         response.setHeader("Set-Cookie", cookie);
-        LoginResponseUser userres = new LoginResponseUser(res.access_token(), res.response(), res.statusDesc());
+        LoginResponseUser userres = new LoginResponseUser(res.getData().access_token(), res.getData().response(),
+                res.getData().statusDesc());
         return ResponseEntity.ok().body(userres);
     }
 
@@ -81,74 +83,72 @@ public class UserController {
         return ResponseEntity.ok("Logout Successful");
     }
 
-    @GetMapping("/testAuth")
-    public Map<String, Object> testAuth(@AuthenticationPrincipal Jwt jwt, Authentication auth) {
-        return Map.of(
-                "jwt_roles", jwt.getClaimAsMap("realm_access"),
-                "authorities", auth.getAuthorities());
-    }
-
     @GetMapping("/{userid}")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<UserResponse> getUser(@PathVariable long userid, @AuthenticationPrincipal Jwt jwt) {
+    public ResponseEntity<?> getUser(@PathVariable long userid, @AuthenticationPrincipal Jwt jwt) {
 
-        UserResponse response = userService.getUser(jwt.getClaim("email"));
-        return ResponseEntity.ok().body(response);
+        ServiceResponse<UserResponse> res = userService.getUser(jwt.getClaim("email"));
+        if (!res.isSuccess()) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(res.getMessage());
+        }
+        return ResponseEntity.ok().body(res.getData());
     }
 
     @GetMapping("/auth/me")
-    public ResponseEntity<UserResponse> getMe(@AuthenticationPrincipal Jwt jwt) {
+    public ResponseEntity<?> getMe(@AuthenticationPrincipal Jwt jwt) {
         if (jwt == null) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "User not authenticated");
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("User not authenticated");
         }
-        UserResponse response = userService.getUser(jwt.getClaim("email"));
-        return ResponseEntity.ok().body(response);
+        ServiceResponse<UserResponse> res = userService.getUser(jwt.getClaim("email"));
+        if (!res.isSuccess()) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(res.getMessage());
+        }
+        return ResponseEntity.ok().body(res.getData());
     }
 
-    @PostMapping("/public/verifyEmail")
-    public ResponseEntity<String> verifyEmail(@RequestBody VerifyEmailRequest req,
-            HttpServletResponse response) {
-        userService.verifyEmail(req.code(), req.email());
-
-        return ResponseEntity.ok().body("Email Verified");
-
-    }
-
-    @GetMapping("/public/resendCode")
-    public ResponseEntity<String> resendCode(@RequestParam String email) {
-        userService.resendCode(email);
-        return ResponseEntity.ok().body("Code resent to email account");
-    }
+    // @GetMapping("/public/resendCode")
+    // public ResponseEntity<String> resendCode(@RequestParam String email) {
+    // ServiceResponse<String> res = userService.resendCode(email);
+    // if (!res.isSuccess()) {
+    // return ResponseEntity.status(HttpStatus.FORBIDDEN).body(res.getMessage());
+    // }
+    // return ResponseEntity.ok().body(res.getMessage());
+    // }
 
     @GetMapping
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<UserResponseList> getUsers(@RequestParam(required = false) String role,
+    public ResponseEntity<?> getUsers(@RequestParam(required = false) String role,
             @RequestParam(required = false) String search,
             @AuthenticationPrincipal Jwt jwt) {
 
-        UserResponseList response = userService.getAllUser(role, search);
-        return ResponseEntity.ok().body(response);
+        ServiceResponse<UserResponseList> res = userService.getAllUser(role, search);
+        if (!res.isSuccess()) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(res.getMessage());
+        }
+        return ResponseEntity.ok().body(res.getData());
 
     }
 
     @PutMapping("/{userid}")
     @PreAuthorize("hasAnyRole('AGENT', 'COMPANY', 'ADMIN')")
-    public ResponseEntity<UserResponse> updateUser(@PathVariable long userid, @RequestBody RegisterRequest req,
+    public ResponseEntity<?> updateUser(@PathVariable long userid, @RequestBody RegisterRequest req,
             @AuthenticationPrincipal Jwt jwt) {
 
         Optional<User> user = userService.getUserByEmail(jwt.getClaim("email"));
 
         if (!user.isPresent()) {
-            throw new ObjectNotFound("user", "email");
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("User not found");
         }
 
         if (user.get().getId() != userid) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN,
-                    "Access denied You can only update your own account");
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Access Denied");
         }
 
-        UserResponse response = userService.updateUser(req, userid);
-        return ResponseEntity.ok().body(response);
+        ServiceResponse<UserResponse> res = userService.updateUser(req, userid);
+        if (!res.isSuccess()) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(res.getMessage());
+        }
+        return ResponseEntity.ok().body(res.getData());
     }
 
     @PutMapping("updatePas/{userid}")
@@ -160,16 +160,18 @@ public class UserController {
         Optional<User> user = userService.getUserByEmail(jwt.getClaim("email"));
 
         if (!user.isPresent()) {
-            throw new ObjectNotFound("user", "email");
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("User not found");
         }
 
         if (user.get().getId() != userid) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN,
-                    "Access denied You can only update your own account");
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Access Denied");
         }
 
-        userService.updateUserPassword(req, userid);
-        return ResponseEntity.ok().body("Password updated successfully");
+        ServiceResponse<String> res = userService.updateUserPassword(req, userid);
+        if (!res.isSuccess()) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(res.getMessage());
+        }
+        return ResponseEntity.ok().body(res.getMessage());
     }
 
     @DeleteMapping("/{userid}")
@@ -178,17 +180,19 @@ public class UserController {
 
         Optional<User> opuser = userService.getUserByEmail(jwt.getClaim("email"));
         if (!opuser.isPresent()) {
-            throw new ObjectNotFound("User", "email");
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("User not found");
         }
 
         if (opuser.get().getId() != userid) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN,
-                    "Access denied You can only delete your own account");
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Access Denied");
         }
 
-        userService.deleteUser(userid);
+        ServiceResponse<String> res = userService.deleteUser(userid);
+        if (!res.isSuccess()) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(res.getMessage());
+        }
 
-        return ResponseEntity.ok().body("User deleted successfully");
+        return ResponseEntity.ok().body(res.getMessage());
     }
 
     @PostMapping("/uploadImage/{userid}")
@@ -200,19 +204,19 @@ public class UserController {
         Optional<User> user = userService.getUserByEmail(jwt.getClaim("email"));
 
         if (!user.isPresent()) {
-            throw new ObjectNotFound("user", "email");
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("User not found");
         }
 
         if (user.get().getId() != userid) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN,
-                    "Access denied You can only update your own profile picture");
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Access Denied");
+
         }
 
-        String pfpurl = userService.uploadProfileImage(userid, file);
-        if (pfpurl == null) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Upload failed");
+        ServiceResponse<String> pfpurl = userService.uploadProfileImage(userid, file);
+        if (!pfpurl.isSuccess()) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(pfpurl.getMessage());
         }
-        return ResponseEntity.ok().body(pfpurl);
+        return ResponseEntity.ok().body(pfpurl.getData());
     }
 
     @DeleteMapping("deletePfp/{userid}")
@@ -221,16 +225,16 @@ public class UserController {
 
         Optional<User> opuser = userService.getUserByEmail(jwt.getClaim("email"));
         if (!opuser.isPresent()) {
-            throw new ObjectNotFound("User", "email");
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("User not found");
         }
-
         if (opuser.get().getId() != userid) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN,
-                    "Access denied You can only update your own profile picture");
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Access Denied");
+
         }
-
-        userService.deletePfp(userid);
-        return ResponseEntity.ok().body("Deleted pfp");
+        ServiceResponse<String> res = userService.deletePfp(userid);
+        if (!res.isSuccess()) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(res.getMessage());
+        }
+        return ResponseEntity.ok().body(res.getMessage());
     }
-
 }

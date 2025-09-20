@@ -14,7 +14,7 @@ import sample.project.DTO.request.ExperianceDTO;
 import sample.project.DTO.request.ProjectDTO;
 import sample.project.DTO.request.UpdateCvRequest;
 import sample.project.DTO.response.AgentResponse;
-import sample.project.ErrorHandling.Exception.ObjectNotFound;
+import sample.project.DTO.response.ServiceResponse;
 import sample.project.Model.Agent;
 import sample.project.Model.Award;
 import sample.project.Model.Cv;
@@ -40,11 +40,11 @@ public class AgentService {
     }
 
     @Transactional
-    public AgentResponse addCv(AddCvRequest req, Long agentId) {
+    public ServiceResponse<AgentResponse> addCv(AddCvRequest req, Long agentId) {
         Optional<Agent> optionalAgent = agentRepo.findById(agentId);
 
         if (!optionalAgent.isPresent()) {
-            throw new ObjectNotFound("User", "id");
+            return new ServiceResponse<>(false, "User not found", null);
         }
 
         Agent agent = optionalAgent.get();
@@ -117,7 +117,7 @@ public class AgentService {
         agent.setCv(cv);
 
         User user = agent.getUser();
-        return AgentResponse.builder()
+        AgentResponse res = AgentResponse.builder()
                 .id(agentId)
                 .birthdate(user.getBirthdate())
                 .email(user.getEmail())
@@ -128,15 +128,17 @@ public class AgentService {
                 .cv(cv)
                 .build();
 
+        return new ServiceResponse<>(true, "", res);
+
     }
 
     @Transactional
-    public AgentResponse updateCv(UpdateCvRequest req, Long agentId) {
+    public ServiceResponse<AgentResponse> updateCv(UpdateCvRequest req, Long agentId) {
 
         Optional<Agent> optionalAgent = agentRepo.findById(agentId);
 
         if (!optionalAgent.isPresent()) {
-            throw new ObjectNotFound("User", "id");
+            return new ServiceResponse<>(false, "User not found", null);
         }
 
         Agent agent = optionalAgent.get();
@@ -210,7 +212,7 @@ public class AgentService {
 
         agent.setCv(cv);
         User user = agent.getUser();
-        return AgentResponse.builder()
+        AgentResponse res = AgentResponse.builder()
                 .id(agentId)
                 .birthdate(user.getBirthdate())
                 .email(user.getEmail())
@@ -220,23 +222,28 @@ public class AgentService {
                 .role(user.getRole())
                 .cv(cv)
                 .build();
+
+        return new ServiceResponse<>(true, "", res);
+
     }
 
-    public void deleteAgent(Long id) {
+    public ServiceResponse<String> deleteAgent(Long id) {
         Optional<Agent> agent = agentRepo.findById(id);
         if (!agent.isPresent()) {
-            throw new ObjectNotFound("User", "id");
+            return new ServiceResponse<>(false, "User not found", null);
         }
         agentRepo.deleteById(id);
+        return new ServiceResponse<>(true, "", "");
+
     }
 
-    public List<JobApplication> getMyJobApplications(Long id) {
+    public ServiceResponse<List<JobApplication>> getMyJobApplications(Long id) {
         Optional<Agent> agent = agentRepo.findById(id);
         if (!agent.isPresent()) {
-            throw new ObjectNotFound("User", "id");
+            return new ServiceResponse<>(false, "User not found", null);
         }
-
-        return agent.get().getJobApplications();
+        List<JobApplication> data = agent.get().getJobApplications();
+        return new ServiceResponse<>(true, "", data);
 
     }
 
@@ -244,12 +251,13 @@ public class AgentService {
         return agentRepo.findById(agentId);
     }
 
-    public AgentResponse deleteCv(String name, long deleteid, long agentid) {
+    @Transactional
+    public ServiceResponse<AgentResponse> deleteCv(String name, long deleteid, long agentid) {
         System.out.println("DeleteCv called with name: '" + name + "' and id: " + deleteid);
         Optional<Agent> optionalAgent = agentRepo.findById(agentid);
 
         if (!optionalAgent.isPresent()) {
-            throw new ObjectNotFound("User", "id");
+            return new ServiceResponse<>(false, "User not found", null);
         }
 
         Agent agent = optionalAgent.get();
@@ -308,7 +316,7 @@ public class AgentService {
 
         agent.setCv(cv);
         User user = agent.getUser();
-        return AgentResponse.builder()
+        AgentResponse res = AgentResponse.builder()
                 .id(agentid)
                 .birthdate(user.getBirthdate())
                 .email(user.getEmail())
@@ -318,6 +326,9 @@ public class AgentService {
                 .role(user.getRole())
                 .cv(cv)
                 .build();
+
+        return new ServiceResponse<>(true, "", res);
+
     }
 
 }

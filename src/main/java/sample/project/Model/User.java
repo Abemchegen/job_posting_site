@@ -57,8 +57,6 @@ public class User {
     @OneToOne(mappedBy = "user")
     @JsonBackReference("agent-user")
     private Agent agent;
-    private String verificationCode;
-    private LocalDateTime emailVerificationExpiry;
     private boolean emailVerified;
 
 }

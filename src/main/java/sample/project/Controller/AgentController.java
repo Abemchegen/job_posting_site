@@ -6,9 +6,10 @@ import lombok.RequiredArgsConstructor;
 import sample.project.DTO.request.AddCvRequest;
 import sample.project.DTO.request.UpdateCvRequest;
 import sample.project.DTO.response.AgentResponse;
-
+import sample.project.DTO.response.ServiceResponse;
 import sample.project.Service.AgentService;
 
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -27,33 +28,41 @@ public class AgentController {
 
     @PostMapping("/uploadCv/{userid}")
     @PreAuthorize("hasRole('AGENT')")
-    public ResponseEntity<AgentResponse> addCv(@RequestBody AddCvRequest req, @PathVariable long userid,
+    public ResponseEntity<?> addCv(@RequestBody AddCvRequest req, @PathVariable long userid,
             @AuthenticationPrincipal Jwt jwt) {
 
-        AgentResponse response = agentService.addCv(req, userid);
+        ServiceResponse<AgentResponse> response = agentService.addCv(req, userid);
 
-        return ResponseEntity.ok().body(response);
+        if (!response.isSuccess()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response.getMessage());
+        }
+
+        return ResponseEntity.ok().body(response.getData());
 
     }
 
     @PostMapping("/updateCv/{userid}")
     @PreAuthorize("hasRole('AGENT')")
-    public ResponseEntity<AgentResponse> updateCv(@RequestBody UpdateCvRequest req, @PathVariable long userid) {
+    public ResponseEntity<?> updateCv(@RequestBody UpdateCvRequest req, @PathVariable long userid) {
 
-        AgentResponse response = agentService.updateCv(req, userid);
-
-        return ResponseEntity.ok().body(response);
+        ServiceResponse<AgentResponse> response = agentService.updateCv(req, userid);
+        if (!response.isSuccess()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response.getMessage());
+        }
+        return ResponseEntity.ok().body(response.getData());
 
     }
 
     @DeleteMapping("/deleteCv/{deleteid}/user/{userid}")
     @PreAuthorize("hasRole('AGENT')")
-    public ResponseEntity<AgentResponse> deleteCv(@PathVariable long deleteid, @RequestBody String deletename,
+    public ResponseEntity<?> deleteCv(@PathVariable long deleteid, @RequestBody String deletename,
             @PathVariable long userid) {
 
-        AgentResponse response = agentService.deleteCv(deletename, deleteid, userid);
-
-        return ResponseEntity.ok().body(response);
+        ServiceResponse<AgentResponse> response = agentService.deleteCv(deletename, deleteid, userid);
+        if (!response.isSuccess()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response.getMessage());
+        }
+        return ResponseEntity.ok().body(response.getData());
 
     }
 

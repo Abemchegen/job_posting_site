@@ -3,7 +3,6 @@ package sample.project.Controller;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.server.ResponseStatusException;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -12,8 +11,7 @@ import sample.project.DTO.request.JobPostRequest;
 import sample.project.DTO.request.UpdateJobPost;
 import sample.project.DTO.response.JobApplicationResponse;
 import sample.project.DTO.response.JobpostResponse;
-import sample.project.ErrorHandling.Exception.AccessDenied;
-import sample.project.ErrorHandling.Exception.ObjectNotFound;
+import sample.project.DTO.response.ServiceResponse;
 import sample.project.Model.Company;
 import sample.project.Model.User;
 import sample.project.Service.JobPostService;
@@ -44,46 +42,53 @@ public class JobPostController {
 
     @PostMapping("/create")
     @PreAuthorize("hasRole('COMPANY')")
-    public ResponseEntity<JobpostResponse> createJobPost(@Valid @RequestBody JobPostRequest req,
+    public ResponseEntity<?> createJobPost(@Valid @RequestBody JobPostRequest req,
             @AuthenticationPrincipal Jwt jwt) {
 
         Optional<User> user = userService.getUserByEmail(jwt.getClaim("email"));
         if (!user.isPresent()) {
-            throw new AccessDenied();
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("User not found");
         }
-
         Company company = user.get().getCompany();
         if (!company.getName().equals(req.getCompanyName())) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN,
-                    "Access denied , you can only create post for your company");
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body("Access denied , you can only create post for your company");
         }
-        JobpostResponse jobPost = jobPostService.postJob(req);
-
-        return ResponseEntity.ok().body(jobPost);
+        ServiceResponse<JobpostResponse> jobPost = jobPostService.postJob(req);
+        if (!jobPost.isSuccess()) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(jobPost.getMessage());
+        }
+        return ResponseEntity.ok().body(jobPost.getData());
     }
 
     @PostMapping("/update/{jobpostID}")
     @PreAuthorize("hasRole('COMPANY')")
-    public ResponseEntity<JobpostResponse> updateJobPost(@RequestBody UpdateJobPost req, @PathVariable Long jobpostID,
+    public ResponseEntity<?> updateJobPost(@RequestBody UpdateJobPost req, @PathVariable Long jobpostID,
             @AuthenticationPrincipal Jwt jwt) {
 
         Optional<User> user = userService.getUserByEmail(jwt.getClaim("email"));
 
         if (!user.isPresent()) {
-            throw new ObjectNotFound("user", "email");
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("User not found");
         }
 
-        JobpostResponse existingjobPost = jobPostService.getJobPostById(jobpostID);
+        ServiceResponse<JobpostResponse> existingjobPost = jobPostService.getJobPostById(jobpostID);
+        if (!existingjobPost.isSuccess()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(existingjobPost.getMessage());
+        }
         Company company = user.get().getCompany();
 
-        boolean isSameCompany = company.getName().equals(existingjobPost.getCompanyName());
+        boolean isSameCompany = company.getName().equals(existingjobPost.getData().getCompanyName());
         if (!isSameCompany) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Access denied");
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body("Access denied");
         }
 
-        JobpostResponse jobPost = jobPostService.updateJobPost(req, jobpostID);
-
-        return ResponseEntity.ok().body(jobPost);
+        ServiceResponse<JobpostResponse> jobPost = jobPostService.updateJobPost(req, jobpostID);
+        if (!jobPost.isSuccess()) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(jobPost.getMessage());
+        }
+        return ResponseEntity.ok().body(jobPost.getData());
     }
 
     @DeleteMapping("/{jobpostID}")
@@ -94,15 +99,19 @@ public class JobPostController {
         Optional<User> user = userService.getUserByEmail(jwt.getClaim("email"));
 
         if (!user.isPresent()) {
-            throw new ObjectNotFound("user", "email");
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("User not found");
         }
 
-        JobpostResponse existingjobPost = jobPostService.getJobPostById(jobpostID);
+        ServiceResponse<JobpostResponse> existingjobPost = jobPostService.getJobPostById(jobpostID);
+        if (!existingjobPost.isSuccess()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(existingjobPost.getMessage());
+        }
         Company company = user.get().getCompany();
 
-        boolean isSameCompany = company.getName().equals(existingjobPost.getCompanyName());
+        boolean isSameCompany = company.getName().equals(existingjobPost.getData().getCompanyName());
         if (!isSameCompany) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Access denied");
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body("Access denied");
         }
         jobPostService.deleteJobPost(jobpostID);
 
@@ -111,56 +120,72 @@ public class JobPostController {
 
     @GetMapping("/{jobpostID}/jobApplication")
     @PreAuthorize("hasRole('COMPANY')")
-    public ResponseEntity<List<JobApplicationResponse>> getAllJobApplications(@PathVariable Long jobpostID,
+    public ResponseEntity<?> getAllJobApplications(@PathVariable Long jobpostID,
             @AuthenticationPrincipal Jwt jwt) {
 
         Optional<User> user = userService.getUserByEmail(jwt.getClaim("email"));
 
         if (!user.isPresent()) {
-            throw new ObjectNotFound("user", "email");
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("User not found");
         }
 
-        JobpostResponse existingjobPost = jobPostService.getJobPostById(jobpostID);
+        ServiceResponse<JobpostResponse> existingjobPost = jobPostService.getJobPostById(jobpostID);
+        if (!existingjobPost.isSuccess()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(existingjobPost.getMessage());
+        }
         Company company = user.get().getCompany();
 
-        boolean isSameCompany = company.getName().equals(existingjobPost.getCompanyName());
+        boolean isSameCompany = company.getName().equals(existingjobPost.getData().getCompanyName());
         if (!isSameCompany) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Access denied");
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body("Access denied");
         }
-        List<JobApplicationResponse> jobApplications = jobPostService.getJobApplications(jobpostID);
+        ServiceResponse<List<JobApplicationResponse>> jobApplications = jobPostService.getJobApplications(jobpostID);
+        if (!jobApplications.isSuccess()) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(jobApplications.getMessage());
+        }
 
-        return ResponseEntity.ok().body(jobApplications);
+        return ResponseEntity.ok().body(jobApplications.getData());
 
     }
 
     @GetMapping("/{jobPostID}/jobApplication/{jobApplicationID}")
     @PreAuthorize("hasRole('COMPANY')")
-    public ResponseEntity<JobApplicationResponse> getJobApplication(@PathVariable Long jobPostID,
+    public ResponseEntity<?> getJobApplication(@PathVariable Long jobPostID,
             @PathVariable Long jobApplicationID,
             @AuthenticationPrincipal Jwt jwt) {
 
         Optional<User> user = userService.getUserByEmail(jwt.getClaim("email"));
 
         if (!user.isPresent()) {
-            throw new ObjectNotFound("user", "email");
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("User not found");
         }
 
-        JobpostResponse existingjobPost = jobPostService.getJobPostById(jobPostID);
+        ServiceResponse<JobpostResponse> existingjobPost = jobPostService.getJobPostById(jobPostID);
+        if (!existingjobPost.isSuccess()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(existingjobPost.getMessage());
+        }
         Company company = user.get().getCompany();
 
-        boolean isSameCompany = company.getName().equals(existingjobPost.getCompanyName());
+        boolean isSameCompany = company.getName().equals(existingjobPost.getData().getCompanyName());
         if (!isSameCompany) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Access denied");
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body("Access denied");
         }
-        JobApplicationResponse jobApplications = jobPostService.getJobApplication(jobPostID, jobApplicationID);
+        ServiceResponse<JobApplicationResponse> jobApplications = jobPostService.getJobApplication(jobPostID,
+                jobApplicationID);
 
-        return ResponseEntity.ok().body(jobApplications);
+        if (!jobApplications.isSuccess()) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(jobApplications.getMessage());
+        }
+
+        return ResponseEntity.ok().body(jobApplications.getData());
 
     }
 
     @PutMapping("/{jobPostID}/jobApplication/{jobApplicationID}")
     @PreAuthorize("hasRole('COMPANY')")
-    public ResponseEntity<JobApplicationResponse> updateJobApplicationStatus(@PathVariable Long jobPostID,
+    public ResponseEntity<?> updateJobApplicationStatus(@PathVariable Long jobPostID,
             @PathVariable Long jobApplicationID,
             @RequestBody JobApplicationUpdateRequest req,
             @AuthenticationPrincipal Jwt jwt) {
@@ -168,24 +193,31 @@ public class JobPostController {
         Optional<User> user = userService.getUserByEmail(jwt.getClaim("email"));
 
         if (!user.isPresent()) {
-            throw new ObjectNotFound("user", "email");
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("User not found");
         }
 
-        JobpostResponse existingjobPost = jobPostService.getJobPostById(jobPostID);
+        ServiceResponse<JobpostResponse> existingjobPost = jobPostService.getJobPostById(jobPostID);
+        if (!existingjobPost.isSuccess()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(existingjobPost.getMessage());
+        }
         Company company = user.get().getCompany();
 
-        boolean isSameCompany = company.getName().equals(existingjobPost.getCompanyName());
+        boolean isSameCompany = company.getName().equals(existingjobPost.getData().getCompanyName());
         if (!isSameCompany) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Access denied");
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body("Access denied");
         }
-        JobApplicationResponse jobApplications = jobPostService.updateJobApplication(jobPostID, jobApplicationID, req);
-
-        return ResponseEntity.ok().body(jobApplications);
+        ServiceResponse<JobApplicationResponse> jobApplications = jobPostService.updateJobApplication(jobPostID,
+                jobApplicationID, req);
+        if (!jobApplications.isSuccess()) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(jobApplications.getMessage());
+        }
+        return ResponseEntity.ok().body(jobApplications.getData());
 
     }
 
     @GetMapping("/company")
-    public ResponseEntity<List<JobpostResponse>> getAllJobPostsCompany(@AuthenticationPrincipal Jwt jwt,
+    public ResponseEntity<?> getAllJobPostsCompany(@AuthenticationPrincipal Jwt jwt,
             @RequestParam(required = false) Integer salaryMin,
             @RequestParam(required = false) Integer salaryMax,
             @RequestParam(required = false) String date,
@@ -195,21 +227,27 @@ public class JobPostController {
         Optional<User> user = userService.getUserByEmail(jwt.getClaim("email"));
 
         if (!user.isPresent()) {
-            throw new ObjectNotFound("user", "email");
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("User not found");
         }
 
-        List<JobpostResponse> jobPosts = jobPostService.getAllJobPostsCompany(user.get().getCompany().getName(),
+        ServiceResponse<List<JobpostResponse>> jobPosts = jobPostService.getAllJobPostsCompany(
+                user.get().getCompany().getName(),
                 salaryMin, salaryMax, date, sort, search);
 
-        return ResponseEntity.ok().body(jobPosts);
+        if (!jobPosts.isSuccess()) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(jobPosts.getMessage());
+        }
+        return ResponseEntity.ok().body(jobPosts.getData());
 
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<JobpostResponse> getJobPostById(@PathVariable Long id) {
-        JobpostResponse jobPost = jobPostService.getJobPostById(id);
-
-        return ResponseEntity.ok().body(jobPost);
+    public ResponseEntity<?> getJobPostById(@PathVariable Long id) {
+        ServiceResponse<JobpostResponse> jobPost = jobPostService.getJobPostById(id);
+        if (!jobPost.isSuccess()) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(jobPost.getMessage());
+        }
+        return ResponseEntity.ok().body(jobPost.getData());
 
     }
 

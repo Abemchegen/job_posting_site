@@ -3,6 +3,7 @@ package sample.project.Controller;
 import java.util.List;
 import java.util.Optional;
 
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.handler.annotation.Payload;
@@ -12,8 +13,8 @@ import org.springframework.web.bind.annotation.GetMapping;
 
 import lombok.RequiredArgsConstructor;
 import sample.project.DTO.request.ChatRequest;
+import sample.project.DTO.response.ServiceResponse;
 import sample.project.DTO.response.UserResponse;
-import sample.project.ErrorHandling.Exception.ObjectNotFound;
 import sample.project.Model.ChatMessage;
 import sample.project.Model.User;
 import sample.project.Service.ChatService;
@@ -41,27 +42,34 @@ public class ChatController {
 
     @GetMapping("/contacts")
     @PreAuthorize("hasAnyRole('AGENT', 'COMPANY')")
-    public ResponseEntity<List<UserResponse>> getChatContacts(@AuthenticationPrincipal Jwt jwt) {
+    public ResponseEntity<?> getChatContacts(@AuthenticationPrincipal Jwt jwt) {
 
         Optional<User> opuser = userService.getUserByEmail(jwt.getClaim("email"));
         if (!opuser.isPresent()) {
-            throw new ObjectNotFound("User", "email");
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("User not found");
         }
-        List<UserResponse> response = chatService.getChatContacts(opuser.get().getId());
-        return ResponseEntity.ok().body(response);
+        ServiceResponse<List<UserResponse>> response = chatService.getChatContacts(opuser.get().getId());
+
+        if (!response.isSuccess()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response.getMessage());
+        }
+        return ResponseEntity.ok().body(response.getData());
     }
 
     @GetMapping("/history/{userid}")
     @PreAuthorize("hasAnyRole('AGENT', 'COMPANY')")
-    public ResponseEntity<List<ChatMessage>> getChatHistory(@AuthenticationPrincipal Jwt jwt,
+    public ResponseEntity<?> getChatHistory(@AuthenticationPrincipal Jwt jwt,
             @PathVariable long userid) {
 
         Optional<User> opuser = userService.getUserByEmail(jwt.getClaim("email"));
         if (!opuser.isPresent()) {
-            throw new ObjectNotFound("User", "email");
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("User not found.");
         }
-        List<ChatMessage> response = chatService.getChatHistory(opuser.get().getId(), userid);
-        return ResponseEntity.ok().body(response);
+        ServiceResponse<List<ChatMessage>> response = chatService.getChatHistory(opuser.get().getId(), userid);
+        if (!response.isSuccess()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response.getMessage());
+        }
+        return ResponseEntity.ok().body(response.getData());
     }
 
     @DeleteMapping("/delete/{chatId}")
@@ -69,15 +77,17 @@ public class ChatController {
     public ResponseEntity<String> putMethodName(@PathVariable long chatId) {
         chatService.deleteChat(chatId);
         return ResponseEntity.ok().body("Chat deleted");
-
     }
 
     @GetMapping("/{userid}")
     @PreAuthorize("hasAnyRole('AGENT', 'COMPANY')")
-    public ResponseEntity<UserResponse> getUsertoChat(@PathVariable long userid,
+    public ResponseEntity<?> getUsertoChat(@PathVariable long userid,
             @AuthenticationPrincipal Jwt jwt) {
-        UserResponse response = chatService.getUsertoChat(userid);
-        return ResponseEntity.ok().body(response);
+        ServiceResponse<UserResponse> response = chatService.getUsertoChat(userid);
+        if (!response.isSuccess()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response.getMessage());
+        }
+        return ResponseEntity.ok().body(response.getData());
     }
 
 }

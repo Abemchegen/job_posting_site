@@ -40,9 +40,8 @@
       "type": "java.lang.String",
       "description": "Client Secret"
     },
-
     {
-      "name": "keycloak.clientId",
+      "name": "keycloak.client",
       "type": "java.lang.String",
       "description": "Keyclock client id"
     }

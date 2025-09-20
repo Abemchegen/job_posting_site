@@ -7,7 +7,7 @@ import lombok.RequiredArgsConstructor;
 import sample.project.DTO.request.CompanyUpdateRequest;
 import sample.project.DTO.response.CompanyUpdateResponse;
 import sample.project.DTO.response.JobpostResponse;
-import sample.project.ErrorHandling.Exception.ObjectNotFound;
+import sample.project.DTO.response.ServiceResponse;
 import sample.project.Model.User;
 import sample.project.Service.CompanyService;
 import sample.project.Service.UserService;
@@ -15,6 +15,7 @@ import sample.project.Service.UserService;
 import java.util.List;
 import java.util.Optional;
 
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -33,30 +34,39 @@ public class CompanyController {
 
     @PutMapping("/updateDetails")
     @PreAuthorize("hasRole('COMPANY')")
-    public ResponseEntity<CompanyUpdateResponse> changeCompanyDetails(@RequestBody CompanyUpdateRequest req,
+    public ResponseEntity<?> changeCompanyDetails(@RequestBody CompanyUpdateRequest req,
             @AuthenticationPrincipal Jwt jwt) {
 
         Optional<User> user = userService.getUserByEmail(jwt.getClaim("email"));
 
         if (!user.isPresent()) {
-            throw new ObjectNotFound("user", "email");
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("User not found");
         }
+        ServiceResponse<CompanyUpdateResponse> response = companyService.changeCompanyDetails(req,
+                user.get().getCompany().getId());
 
-        CompanyUpdateResponse response = companyService.changeCompanyDetails(req, user.get().getCompany().getId());
-        return ResponseEntity.ok().body(response);
+        if (!response.isSuccess()) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(response.getData());
+        }
+        return ResponseEntity.ok().body(response.getData());
     }
 
     @GetMapping("getJobPosts")
-    public ResponseEntity<List<JobpostResponse>> getAllJobPostsFromACompany(@AuthenticationPrincipal Jwt jwt) {
+    public ResponseEntity<?> getAllJobPostsFromACompany(@AuthenticationPrincipal Jwt jwt) {
         Optional<User> user = userService.getUserByEmail(jwt.getClaim("email"));
 
         if (!user.isPresent()) {
-            throw new ObjectNotFound("user", "email");
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("User not found");
         }
 
-        List<JobpostResponse> jobPosts = companyService.getAllJobPostsFromACompany(user.get().getCompany().getId());
+        ServiceResponse<List<JobpostResponse>> response = companyService
+                .getAllJobPostsFromACompany(user.get().getCompany().getId());
 
-        return ResponseEntity.ok().body(jobPosts);
+        if (!response.isSuccess()) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(response.getData());
+        }
+
+        return ResponseEntity.ok().body(response.getData());
 
     }
 

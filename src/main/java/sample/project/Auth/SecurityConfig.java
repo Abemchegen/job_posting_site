@@ -43,7 +43,8 @@ public class SecurityConfig {
 
                 return http.csrf(customizer -> customizer.disable())
                                 .authorizeHttpRequests(request -> request
-                                                .requestMatchers("/users/public/**", "/users/public", "/users/auth/me")
+                                                .requestMatchers("/users/public/**", "/users/public", "/users/auth/me",
+                                                                "/ms/**")
                                                 .permitAll()
                                                 .anyRequest().authenticated())
 
@@ -57,8 +58,8 @@ public class SecurityConfig {
                                                         response.sendError(HttpServletResponse.SC_FORBIDDEN,
                                                                         "Forbidden");
                                                 }))
-                                .addFilterBefore(new CookiesFilter(),
-                                                org.springframework.security.web.authentication.preauth.AbstractPreAuthenticatedProcessingFilter.class)
+                                // .addFilterBefore(new CookiesFilter(),
+                                // org.springframework.security.web.authentication.preauth.AbstractPreAuthenticatedProcessingFilter.class)
                                 .oauth2ResourceServer(oauth2 -> oauth2
                                                 .jwt(jwt -> jwt.jwtAuthenticationConverter(
                                                                 jwtAuthenticationConverter())))
