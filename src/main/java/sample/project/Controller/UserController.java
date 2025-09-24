@@ -15,7 +15,6 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
-import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -25,7 +24,6 @@ import sample.project.DTO.request.RegisterRequest;
 import sample.project.DTO.request.VerifyEmailRequest;
 import sample.project.DTO.response.LoginResponse;
 import sample.project.DTO.response.LoginResponseUser;
-import sample.project.DTO.response.RegisterResponse;
 import sample.project.DTO.response.ServiceResponse;
 import sample.project.DTO.response.UserResponse;
 import sample.project.DTO.response.UserResponseList;
@@ -64,16 +62,19 @@ public class UserController {
     @PostMapping("/public/verifyEmail")
     public ResponseEntity<?> verifyEmail(@RequestBody VerifyEmailRequest req,
             HttpServletResponse response) {
-        ServiceResponse<RegisterResponse> res = userService.verifyEmail(req.code(), req.email());
+        ServiceResponse<LoginResponse> res = userService.verifyEmail(req.code(), req.email());
         if (!res.isSuccess()) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body(res.getMessage());
         }
-        RegisterResponse resp = res.getData();
-        String cookie = "jwt=" + resp.refreshToken()
+        LoginResponse resp = res.getData();
+        String cookie = "jwt=" + resp.refresh_token()
                 + "; Max-Age=86400; Path=/; HttpOnly; ";
         response.setHeader("Set-Cookie", cookie);
+        LoginResponseUser loginresponseuser = new LoginResponseUser(res.getData().access_token(),
+                res.getData().response(),
+                res.getData().statusDesc());
 
-        return ResponseEntity.ok().body(resp.response());
+        return ResponseEntity.ok().body(loginresponseuser);
 
     }
 

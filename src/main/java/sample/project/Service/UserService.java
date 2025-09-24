@@ -14,9 +14,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
-import org.springframework.web.server.ResponseStatusException;
 
-import jakarta.servlet.http.HttpServletRequest;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import sample.project.Auth.JwtService;
@@ -26,7 +24,6 @@ import sample.project.DTO.request.RegisterRequest;
 import sample.project.DTO.response.AgentResponse;
 import sample.project.DTO.response.CompanyResponse;
 import sample.project.DTO.response.LoginResponse;
-import sample.project.DTO.response.RegisterResponse;
 import sample.project.DTO.response.ServiceResponse;
 import sample.project.DTO.response.UserResponse;
 import sample.project.DTO.response.UserResponseList;
@@ -502,18 +499,18 @@ public class UserService {
     }
 
     @Transactional
-    public ServiceResponse<RegisterResponse> verifyEmail(String code, String email) {
+    public ServiceResponse<LoginResponse> verifyEmail(String code, String email) {
 
         Optional<User> opUser = userRepo.findByEmail(email);
         if (!opUser.isPresent()) {
-            return new ServiceResponse<RegisterResponse>(false, "User not found", null);
+            return new ServiceResponse<LoginResponse>(false, "User not found", null);
         }
 
         User user = opUser.get();
 
         if (!code.equals(user.getVerificationCode()) ||
                 user.getEmailVerificationExpiry().isBefore(LocalDateTime.now())) {
-            return new ServiceResponse<RegisterResponse>(false, "Invalid Code", null);
+            return new ServiceResponse<LoginResponse>(false, "Invalid Code", null);
         }
         if (!user.isEnabled()) {
             user.setEmailVerified(true);
@@ -528,12 +525,12 @@ public class UserService {
         ServiceResponse<UserResponse> res = generateResponse(user);
 
         if (!res.isSuccess()) {
-            return new ServiceResponse<RegisterResponse>(false, "Verification failed", null);
+            return new ServiceResponse<LoginResponse>(false, "Verification failed", null);
 
         }
 
-        RegisterResponse response = new RegisterResponse(user.getId(), accessToken, refreshToken, res.getData());
-        return new ServiceResponse<RegisterResponse>(true, "", response);
+        LoginResponse response = new LoginResponse(user.getId(), accessToken, refreshToken, res.getData(), "success");
+        return new ServiceResponse<LoginResponse>(true, "", response);
 
     }
 
