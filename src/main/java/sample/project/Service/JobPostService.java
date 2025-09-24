@@ -21,7 +21,6 @@ import sample.project.Model.JobApplication;
 import sample.project.Model.JobPost;
 import sample.project.Model.Subcatagory;
 import sample.project.Model.User;
-import sample.project.Repo.JobApplicationRepo;
 import sample.project.Repo.JobPostRepo;
 
 @Service

@@ -15,10 +15,8 @@ import sample.project.DTO.response.ServiceResponse;
 import sample.project.Model.Company;
 import sample.project.Model.User;
 import sample.project.Service.JobPostService;
-import sample.project.Service.UserService;
 
 import java.util.List;
-import java.util.Optional;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -37,7 +35,6 @@ import org.springframework.web.bind.annotation.GetMapping;
 public class JobPostController {
 
     private final JobPostService jobPostService;
-    private final UserService userService;
 
     @PostMapping("/create")
     @PreAuthorize("hasRole('COMPANY')")

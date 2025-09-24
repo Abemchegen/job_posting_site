@@ -3,11 +3,9 @@ package sample.project.Service;
 import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
-import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -306,54 +304,6 @@ public class UserService {
 
         for (int i = 0; i < users.size(); i++) {
             User user = users.get(i);
-            String companyName = null;
-            String companyPhonenumber = null;
-            Cv cv = null;
-            Long companyID = null;
-            if (user.getCompany() != null) {
-                Company company = user.getCompany();
-                companyName = company.getName();
-                companyPhonenumber = company.getPhoneNumber();
-                companyID = company.getId();
-                UserResponse response = CompanyResponse.builder()
-                        .id(user.getId())
-                        .birthdate(user.getBirthdate())
-                        .email(user.getEmail())
-                        .phonenumber(user.getPhonenumber())
-                        .name(user.getName())
-                        .role(user.getRole())
-                        .pfp(user.getPfpUrl())
-                        .companyId(companyID)
-                        .companyName(companyName)
-                        .pfp(user.getPfpUrl())
-                        .companyPhonenumber(companyPhonenumber)
-                        .build();
-                responseList.add(response);
-
-            }
-
-            else if (user.getAgent() != null) {
-                Agent agent = user.getAgent();
-                cv = agent.getCv();
-                UserResponse response = AgentResponse.builder()
-                        .id(agent.getId())
-                        .birthdate(user.getBirthdate())
-                        .email(user.getEmail())
-                        .phonenumber(user.getPhonenumber())
-                        .name(user.getName())
-                        .role(user.getRole())
-                        .pfp(user.getPfpUrl())
-                        .cv(cv)
-                        .build();
-                responseList.add(response);
-            } else if (user.getRole().toString().equals("ADMIN")) {
-
-                UserResponse response = new UserResponse(user.getId(), user.getName(), user.getEmail(),
-                        user.getPhonenumber(), user.getBirthdate(),
-                        user.getRole(), user.getPfpUrl());
-
-                responseList.add(response);
-            }
 
             ServiceResponse<UserResponse> response = generateResponse(user);
             if (!response.isSuccess()) {
