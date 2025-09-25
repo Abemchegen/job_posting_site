@@ -25,8 +25,6 @@ import sample.project.DTO.response.LoginResponse;
 import sample.project.DTO.response.ServiceResponse;
 import sample.project.DTO.response.UserResponse;
 import sample.project.DTO.response.UserResponseList;
-import sample.project.ErrorHandling.Exception.AccessDenied;
-import sample.project.ErrorHandling.Exception.ObjectNotFound;
 import sample.project.Model.Agent;
 import sample.project.Model.Company;
 import sample.project.Model.Cv;
@@ -134,60 +132,17 @@ public class UserService {
         return new ServiceResponse<String>(true, null, "Register Successful");
     }
 
-    public UserResponse getUser(Long id) {
-        User user = userRepo.findById(id)
-                .orElseThrow(() -> new ObjectNotFound("User", "id"));
+    public ServiceResponse<UserResponse> getUser(Long id) {
+        Optional<User> opuser = userRepo.findById(id);
 
-        String companyName = null;
-        String companyPhonenumber = null;
-        Long companyID = null;
-        Cv cv = null;
-        if (user.getCompany() != null) {
-            Company company = user.getCompany();
-            companyName = company.getName();
-            companyPhonenumber = company.getPhoneNumber();
-            companyID = company.getId();
-            return CompanyResponse.builder()
-                    .id(user.getId())
-                    .birthdate(user.getBirthdate())
-                    .email(user.getEmail())
-                    .companyId(companyID)
-                    .companyName(companyName)
-                    .companyPhonenumber(companyPhonenumber)
-                    .pfp(user.getPfpUrl())
-                    .phonenumber(user.getPhonenumber())
-                    .name(user.getName())
-                    .role(user.getRole())
-                    .build();
+        if (!opuser.isPresent()) {
+            return new ServiceResponse<UserResponse>(false, "User not found", null);
         }
 
-        else if (user.getAgent() != null) {
-            Agent agent = user.getAgent();
-            cv = agent.getCv();
-            return AgentResponse.builder()
-                    .id(agent.getId())
-                    .birthdate(user.getBirthdate())
-                    .email(user.getEmail())
-                    .phonenumber(user.getPhonenumber())
-                    .name(user.getName())
-                    .pfp(user.getPfpUrl())
-                    .role(user.getRole())
-                    .cv(cv)
-                    .build();
+        User user = opuser.get();
+        ServiceResponse<UserResponse> res = generateResponse(user);
 
-        } else if (user.getRole().toString().equals("ADMIN")) {
-            return UserResponse.builder()
-                    .id(user.getId())
-                    .name(user.getName())
-                    .email(user.getEmail())
-                    .phonenumber(user.getPhonenumber())
-                    .birthdate(user.getBirthdate())
-                    .pfp(user.getPfpUrl())
-                    .role(user.getRole())
-                    .build();
-        } else {
-            throw new AccessDenied();
-        }
+        return res;
 
     }
 
@@ -492,6 +447,11 @@ public class UserService {
         }
 
         User user = opUser.get();
+
+        if (user.isEmailVerified()) {
+            return new ServiceResponse<String>(false, "User is already verified found", null);
+
+        }
 
         String code = String.format("%06d", new java.util.Random().nextInt(999999));
         user.setVerificationCode(code);

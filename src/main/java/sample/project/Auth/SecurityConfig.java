@@ -40,7 +40,6 @@ public class SecurityConfig {
                         .requestMatchers("/users/public/**", "/users/public", "/ms/**", "/users/auth/me").permitAll()
                         .anyRequest().authenticated())
                 .cors(Customizer.withDefaults())
-                // .httpBasic(Customizer.withDefaults())
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .build();

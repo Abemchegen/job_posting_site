@@ -59,6 +59,15 @@ public class UserController {
         return ResponseEntity.ok(resp);
     }
 
+    @GetMapping("/public/resendCode")
+    public ResponseEntity<String> resendCode(@RequestParam String email) {
+        ServiceResponse<String> res = userService.resendCode(email);
+        if (!res.isSuccess()) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(res.getMessage());
+        }
+        return ResponseEntity.ok().body(res.getMessage());
+    }
+
     @PostMapping("/public/verifyEmail")
     public ResponseEntity<?> verifyEmail(@RequestBody VerifyEmailRequest req,
             HttpServletResponse response) {
