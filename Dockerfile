@@ -1,21 +1,11 @@
-# Use a Java 21 base image
-FROM eclipse-temurin:21-jdk-alpine
-
-# Set working directory
+FROM maven:3.9.4-eclipse-temurin-21-alpine AS build
 WORKDIR /app
-
-# Copy Maven project files and build
 COPY pom.xml .
 COPY src ./src
+RUN mvn clean package -DskipTests
 
-# Build the app
-RUN ./mvnw clean package -DskipTests
-
-# Copy the jar
-COPY target/*.jar app.jar
-
-# Expose port
+FROM eclipse-temurin:21-jdk-alpine
+WORKDIR /app
+COPY --from=build /app/target/*.jar app.jar
 EXPOSE 8080
-
-# Run the app
-ENTRYPOINT ["java", "-jar", "app.jar"]
+ENTRYPOINT ["java","-jar","app.jar"]
