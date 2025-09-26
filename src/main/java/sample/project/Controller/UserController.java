@@ -122,6 +122,11 @@ public class UserController {
     @GetMapping("/auth/me")
     public ResponseEntity<?> getMe(@AuthenticationPrincipal User user) {
 
+        if (user == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("User not authenticated");
+
+        }
+
         ServiceResponse<UserResponse> res = userService.getUser(user.getEmail());
         if (!res.isSuccess()) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body(res.getMessage());
