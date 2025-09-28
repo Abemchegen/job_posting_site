@@ -9,6 +9,7 @@ import java.util.Optional;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -157,6 +158,7 @@ public class UserService {
 
     }
 
+    @Transactional
     public ServiceResponse<LoginResponse> login(LoginRequest req) {
         Authentication authentication = authenticationManager
                 .authenticate(new UsernamePasswordAuthenticationToken(req.email(), req.password()));
@@ -174,6 +176,7 @@ public class UserService {
             }
             String accessToken = jwtService.generateToken(user, 1);
             String refreshToken = jwtService.generateToken(user, 24);
+            user.setRefreshToken(refreshToken);
             UserResponse resp;
             if (user.getRole().toString().equals("AGENT")) {
                 resp = AgentResponse.builder()
@@ -436,8 +439,8 @@ public class UserService {
         }
 
         String accessToken = jwtService.generateToken(user, 1);
-        String refreshToken = jwtService.generateToken(user, 1);
-
+        String refreshToken = jwtService.generateToken(user, 24);
+        user.setRefreshToken(refreshToken);
         ServiceResponse<UserResponse> res = generateResponse(user);
 
         if (!res.isSuccess()) {
@@ -481,19 +484,49 @@ public class UserService {
 
     }
 
-    public ServiceResponse<LoginResponse> refreshToken(User user) {
+    @Transactional
+    public ServiceResponse<LoginResponse> refreshToken(String refreshToken) {
 
-        String accessToken = jwtService.generateToken(user, 1);
-        String refreshToken = jwtService.generateToken(user, 400);
+        Long id = Long.valueOf(jwtService.extractId(refreshToken));
+
+        if (id == null) {
+            return new ServiceResponse<LoginResponse>(false, "Invalid tokens", null);
+
+        }
+        Optional<User> opuser = userRepo.findById(id);
+
+        if (!opuser.isPresent() || !jwtService.isTokenValid(refreshToken, opuser.get())) {
+            return new ServiceResponse<LoginResponse>(false, "Invalid tokens", null);
+        }
+        User user = opuser.get();
+        if (user.getRefreshToken() != refreshToken) {
+            return new ServiceResponse<LoginResponse>(false, "Invalid tokens", null);
+        }
+        String newAccessToken = jwtService.generateToken(user, 1);
+        String newRefreshToken = jwtService.generateToken(user, 24);
+        user.setRefreshToken(newRefreshToken);
 
         ServiceResponse<UserResponse> res = generateResponse(user);
 
         if (!res.isSuccess()) {
             return new ServiceResponse<LoginResponse>(false, "Refresh not successful", null);
         }
-        LoginResponse regres = new LoginResponse(user.getId(), accessToken, refreshToken, res.getData(), "success");
+        LoginResponse regres = new LoginResponse(user.getId(), newAccessToken, newRefreshToken, res.getData(),
+                "success");
 
         return new ServiceResponse<LoginResponse>(true, "", regres);
+    }
+
+    @Transactional
+    public ServiceResponse<String> logout(User u) {
+        Optional<User> opUser = userRepo.findByEmail(u.getEmail());
+        if (!opUser.isPresent()) {
+            return new ServiceResponse<String>(false, "User not found", null);
+        }
+
+        User user = opUser.get();
+        user.setRefreshToken(null);
+        return new ServiceResponse<String>(true, null, null);
     }
 
 }

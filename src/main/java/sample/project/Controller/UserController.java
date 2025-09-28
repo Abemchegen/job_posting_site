@@ -1,9 +1,12 @@
 package sample.project.Controller;
 
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.CookieValue;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -37,6 +40,16 @@ public class UserController {
 
     private final UserService userService;
 
+    private ResponseCookie buildRefreshCookie(String token, long maxAgeSeconds) {
+        return ResponseCookie.from("refreshtoken", token)
+                .httpOnly(true)
+                .secure(true) // only send over HTTPS
+                .sameSite("None") // allow frontend <-> backend cross-site
+                .path("/") // valid everywhere
+                .maxAge(maxAgeSeconds)
+                .build();
+    }
+
     @PostMapping("/public")
     public ResponseEntity<String> createUser(@Valid @RequestBody RegisterRequest req) {
         ServiceResponse<String> res = userService.createUser(req);
@@ -52,8 +65,8 @@ public class UserController {
         if (!res.isSuccess()) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body(res.getMessage());
         }
-        String cookie = "refreshtoken=" + res.getData().refresh_token() + "; Max-Age=86400; Path=/; HttpOnly; ";
-        response.setHeader("Set-Cookie", cookie);
+        ResponseCookie cookie = buildRefreshCookie(res.getData().refresh_token(), 86400);
+        response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
         LoginResponseUser resp = new LoginResponseUser(res.getData().access_token(), res.getData().response(),
                 res.getData().statusDesc());
         return ResponseEntity.ok(resp);
@@ -76,9 +89,8 @@ public class UserController {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body(res.getMessage());
         }
         LoginResponse resp = res.getData();
-        String cookie = "jwt=" + resp.refresh_token()
-                + "; Max-Age=86400; Path=/; HttpOnly; ";
-        response.setHeader("Set-Cookie", cookie);
+        ResponseCookie cookie = buildRefreshCookie(resp.refresh_token(), 86400);
+        response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
         LoginResponseUser loginresponseuser = new LoginResponseUser(res.getData().access_token(),
                 res.getData().response(),
                 res.getData().statusDesc());
@@ -87,14 +99,19 @@ public class UserController {
 
     }
 
-    @PostMapping("/refresh")
-    public ResponseEntity<?> refreshToken(@AuthenticationPrincipal User user, HttpServletResponse response) {
-        ServiceResponse<LoginResponse> res = userService.refreshToken(user);
+    @PostMapping("/public/refresh")
+    public ResponseEntity<?> refreshToken(@CookieValue(name = "refreshtoken", required = false) String refreshToken,
+            HttpServletResponse response) {
+
+        if (refreshToken == null || refreshToken.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Missing refresh token");
+        }
+        ServiceResponse<LoginResponse> res = userService.refreshToken(refreshToken);
         if (!res.isSuccess()) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body(res.getMessage());
         }
-        String cookie = "refreshtoken=" + res.getData().refresh_token() + "; Max-Age=86400; Path=/; HttpOnly; ";
-        response.setHeader("Set-Cookie", cookie);
+        ResponseCookie cookie = buildRefreshCookie(res.getData().refresh_token(), 86400);
+        response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
         LoginResponseUser userres = new LoginResponseUser(res.getData().access_token(), res.getData().response(),
                 res.getData().statusDesc());
         return ResponseEntity.ok().body(userres);
@@ -102,9 +119,13 @@ public class UserController {
 
     @GetMapping("/logout")
     @PreAuthorize("hasAnyRole('AGENT', 'COMPANY', 'ADMIN')")
-    public ResponseEntity<String> logout(HttpServletResponse response) {
-        String cookie = "jwt=; Max-Age=0; Path=/; HttpOnly;";
-        response.setHeader("Set-Cookie", cookie);
+    public ResponseEntity<String> logout(@AuthenticationPrincipal User user, HttpServletResponse response) {
+        ServiceResponse<String> res = userService.logout(user);
+        if (!res.isSuccess()) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(res.getMessage());
+        }
+        ResponseCookie cookie = buildRefreshCookie("", 0);
+        response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
         return ResponseEntity.ok("Logout Successful");
     }
 

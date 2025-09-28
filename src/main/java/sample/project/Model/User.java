@@ -69,6 +69,7 @@ public class User implements UserDetails {
     private String verificationCode;
     private LocalDateTime emailVerificationExpiry;
     private boolean emailVerified;
+    private String refreshToken;
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
