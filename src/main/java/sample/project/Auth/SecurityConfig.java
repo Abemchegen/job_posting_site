@@ -53,7 +53,7 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
         configuration
-                .setAllowedOrigins(List.of("https://sira-git-pre-keycloak-tempnia945-gmailcoms-projects.vercel.app",
+                .setAllowedOrigins(List.of(
                         "https://sira-nine.vercel.app"));
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("*"));
