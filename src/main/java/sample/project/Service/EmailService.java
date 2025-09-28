@@ -1,33 +1,29 @@
 package sample.project.Service;
 
-import com.resend.Resend;
-import com.resend.services.emails.model.SendEmailRequest;
-import com.resend.services.emails.model.SendEmailResponse;
-
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.mail.SimpleMailMessage;
+import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Service;
 
 @Service
 public class EmailService {
 
-    private final Resend resendClient;
+    private final JavaMailSender mailSender;
     private final String from;
 
-    public EmailService(@Value("${RESEND_API_KEY}") String apiKey,
-            @Value("${RESEND_FROM}") String from) {
-        this.resendClient = new Resend(apiKey);
+    public EmailService(JavaMailSender mailSender, @Value("${MAILTRAP_FROM}") String from) {
+        this.mailSender = mailSender;
         this.from = from;
     }
 
-    public void sendEmail(String to, String subject, String htmlContent) {
-        SendEmailRequest request = SendEmailRequest.builder()
-                .from(from)
-                .to(to)
-                .subject(subject)
-                .html(htmlContent)
-                .build();
-        SendEmailResponse data = resendClient.emails().send(request);
-        System.out.println(data);
+    public void sendEmail(String to, String subject, String text) {
+        SimpleMailMessage message = new SimpleMailMessage();
+        message.setFrom(from);
+        message.setTo(to);
+        message.setSubject(subject);
+        message.setText(text);
 
+        mailSender.send(message);
+        System.out.println("Email sent to " + to);
     }
 }
