@@ -132,7 +132,7 @@ public class UserService {
                     </html>
                 """.formatted(code);
 
-        emailService.sendMessage(
+        emailService.sendEmail(
                 user.getEmail(),
                 "Sira website verification code",
                 htmlContent);
