@@ -243,13 +243,22 @@ public class JobPostService {
         Agent agent = app.getAgent();
         User user = agent.getUser();
 
-        emailService.sendMessage(
+        String htmlContent = """
+                    <html>
+                        <body>
+                            <p>Your application to company <strong>%s</strong> for the position <strong>%s</strong> has changed status to: <strong>%s</strong></p>
+                        </body>
+                    </html>
+                """
+                .formatted(
+                        app.getJobPost().getCompany().getName(),
+                        app.getJobPost().getJobName(),
+                        app.getStatus().toString());
+
+        emailService.sendEmail(
                 user.getEmail(),
                 "Application status update",
-                "Your application to company " + app.getJobPost().getCompany().getName() +
-                        " for the position " + app.getJobPost().getJobName() +
-                        " has changed status to: " + app.getStatus().toString());
-
+                htmlContent);
         UserResponse userInfo = new UserResponse(user.getId(), user.getName(),
                 user.getEmail(),
                 user.getPhonenumber(), user.getBirthdate(), user.getRole(), user.getPfpUrl());

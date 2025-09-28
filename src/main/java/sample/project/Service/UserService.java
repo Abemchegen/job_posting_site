@@ -124,7 +124,18 @@ public class UserService {
         user.setVerificationCode(code);
         user.setEmailVerificationExpiry(LocalDateTime.now().plusMinutes(15));
         user.setEmailVerified(false);
-        emailService.sendMessage(user.getEmail(), "Sira website verification code", "Your verification code " + code);
+        String htmlContent = """
+                    <html>
+                        <body>
+                            <p>Your verification code is: <strong>%s</strong></p>
+                        </body>
+                    </html>
+                """.formatted(code);
+
+        emailService.sendMessage(
+                user.getEmail(),
+                "Sira website verification code",
+                htmlContent);
         User savedUser = userRepo.save(user);
         if (req.getRole().toString().equals("AGENT")) {
             agentService.addAgent(savedUser);
@@ -458,8 +469,18 @@ public class UserService {
         user.setEmailVerificationExpiry(LocalDateTime.now().plusMinutes(15));
         user.setEmailVerified(false);
         userRepo.save(user);
-        emailService.sendMessage(user.getEmail(),
-                "Sira website verification code", "Your verification code " + code);
+        String htmlContent = """
+                    <html>
+                        <body>
+                            <p>Your verification code is: <strong>%s</strong></p>
+                        </body>
+                    </html>
+                """.formatted(code);
+
+        emailService.sendEmail(
+                user.getEmail(),
+                "Sira website verification code",
+                htmlContent);
 
         return new ServiceResponse<String>(true, "Code resent to email account",
                 null);
