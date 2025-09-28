@@ -243,13 +243,7 @@ public class JobPostService {
         Agent agent = app.getAgent();
         User user = agent.getUser();
 
-        String htmlContent = """
-                    <html>
-                        <body>
-                            <p>Your application to company <strong>%s</strong> for the position <strong>%s</strong> has changed status to: <strong>%s</strong></p>
-                        </body>
-                    </html>
-                """
+        String message = "Your application to company %s for the position %s has changed status to: %s."
                 .formatted(
                         app.getJobPost().getCompany().getName(),
                         app.getJobPost().getJobName(),
@@ -258,7 +252,7 @@ public class JobPostService {
         emailService.sendEmail(
                 user.getEmail(),
                 "Application status update",
-                htmlContent);
+                message);
         UserResponse userInfo = new UserResponse(user.getId(), user.getName(),
                 user.getEmail(),
                 user.getPhonenumber(), user.getBirthdate(), user.getRole(), user.getPfpUrl());

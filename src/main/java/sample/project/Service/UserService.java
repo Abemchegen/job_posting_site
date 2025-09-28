@@ -27,6 +27,7 @@ import sample.project.DTO.response.UserResponse;
 import sample.project.DTO.response.UserResponseList;
 import sample.project.Model.Agent;
 import sample.project.Model.Company;
+import sample.project.Model.Cv;
 import sample.project.Model.Role;
 import sample.project.Model.User;
 import sample.project.Repo.UserRepo;
@@ -468,18 +469,12 @@ public class UserService {
         user.setEmailVerificationExpiry(LocalDateTime.now().plusMinutes(15));
         user.setEmailVerified(false);
         userRepo.save(user);
-        String htmlContent = """
-                    <html>
-                        <body>
-                            <p>Your verification code is: <strong>%s</strong></p>
-                        </body>
-                    </html>
-                """.formatted(code);
+        String message = "Your verification code is: %s".formatted(code);
 
         emailService.sendEmail(
                 user.getEmail(),
                 "Sira website verification code",
-                htmlContent);
+                message);
 
         return new ServiceResponse<String>(true, "Code resent to email account",
                 null);
