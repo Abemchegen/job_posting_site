@@ -1,46 +1,32 @@
 package sample.project.Service;
 
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.MediaType;
-import org.springframework.stereotype.Service;
-import org.springframework.web.reactive.function.client.WebClient;
-import reactor.core.publisher.Mono;
+import com.resend.Resend;
+import com.resend.services.emails.model.SendEmailRequest;
+import com.resend.services.emails.model.SendEmailResponse;
 
-import java.util.Map;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Service;
 
 @Service
 public class EmailService {
 
-    private final WebClient webClient;
-    private String from;
+    private final Resend resendClient;
+    private final String from;
 
     public EmailService(@Value("${RESEND_API_KEY}") String apiKey,
             @Value("${RESEND_FROM}") String from) {
+        this.resendClient = new Resend(apiKey);
         this.from = from;
-        this.webClient = WebClient.builder()
-                .baseUrl("https://api.resend.com")
-                .defaultHeader("Authorization", "Bearer " + apiKey)
-                .build();
     }
 
     public void sendEmail(String to, String subject, String htmlContent) {
-        Map<String, Object> body = Map.of(
-                "from", from,
-                "to", new String[] { to },
-                "subject", subject,
-                "html", htmlContent);
+        SendEmailRequest request = SendEmailRequest.builder()
+                .from(from)
+                .to(to)
+                .subject(subject)
+                .html(htmlContent)
+                .build();
+        SendEmailResponse data = resendClient.emails().send(request);
 
-        webClient.post()
-                .uri("/emails")
-                .contentType(MediaType.APPLICATION_JSON)
-                .bodyValue(body)
-                .retrieve()
-                .bodyToMono(String.class)
-                .doOnNext(response -> System.out.println("Resend response: " + response))
-                .onErrorResume(e -> {
-                    e.printStackTrace();
-                    return Mono.empty();
-                })
-                .block();
     }
 }

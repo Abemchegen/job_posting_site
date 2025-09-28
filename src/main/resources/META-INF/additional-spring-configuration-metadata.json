@@ -44,6 +44,16 @@
       "name": "keycloak.client",
       "type": "java.lang.String",
       "description": "Keyclock client id"
+    },
+    {
+      "name": "RESEND_FROM",
+      "type": "java.lang.String",
+      "description": "A description for 'RESEND_FROM'"
+    },
+    {
+      "name": "RESEND_API_KEY",
+      "type": "java.lang.String",
+      "description": "A description for 'RESEND_API_KEY'"
     }
   ]
 }

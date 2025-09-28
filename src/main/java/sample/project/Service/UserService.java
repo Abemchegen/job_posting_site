@@ -27,7 +27,6 @@ import sample.project.DTO.response.UserResponse;
 import sample.project.DTO.response.UserResponseList;
 import sample.project.Model.Agent;
 import sample.project.Model.Company;
-import sample.project.Model.Cv;
 import sample.project.Model.Role;
 import sample.project.Model.User;
 import sample.project.Repo.UserRepo;
