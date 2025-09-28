@@ -27,6 +27,7 @@ public class EmailService {
                 .html(htmlContent)
                 .build();
         SendEmailResponse data = resendClient.emails().send(request);
+        System.out.println(data);
 
     }
 }
