@@ -243,7 +243,13 @@ public class JobPostService {
         Agent agent = app.getAgent();
         User user = agent.getUser();
 
-        String message = "Your application to company %s for the position %s has changed status to: %s."
+        String message = """
+                    <html>
+                        <body>
+                            <p>Your application to company <strong>%s</strong> for the position <strong>%s</strong> has changed status to: <strong>%s</strong>.</p>
+                        </body>
+                    </html>
+                """
                 .formatted(
                         app.getJobPost().getCompany().getName(),
                         app.getJobPost().getJobName(),

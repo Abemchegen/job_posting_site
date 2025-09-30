@@ -472,12 +472,18 @@ public class UserService {
         user.setEmailVerificationExpiry(LocalDateTime.now().plusMinutes(15));
         user.setEmailVerified(false);
         userRepo.save(user);
-        String message = "Your verification code is: %s".formatted(code);
+        String htmlContent = """
+                    <html>
+                        <body>
+                            <p>Your verification code is: <strong>%s</strong></p>
+                        </body>
+                    </html>
+                """.formatted(code);
 
         emailService.sendEmail(
                 user.getEmail(),
                 "Sira website verification code",
-                message);
+                htmlContent);
 
         return new ServiceResponse<String>(true, "Code resent to email account",
                 null);
