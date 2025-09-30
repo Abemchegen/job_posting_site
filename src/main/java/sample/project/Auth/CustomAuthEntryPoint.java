@@ -19,6 +19,6 @@ public class CustomAuthEntryPoint implements AuthenticationEntryPoint {
         response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
         response.setContentType("application/json");
         new ObjectMapper().writeValue(response.getOutputStream(),
-                Map.of("status", 401, "message", "Authentication required or invalid token/cookie"));
+                Map.of("status", 401, "message", "Authentication required"));
     }
 }
